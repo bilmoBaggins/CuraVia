@@ -39,6 +39,7 @@ prompt = ChatPromptTemplate.from_messages(
             Give a list of symptoms that match the user's query, matched to the illness they might have.
             Give some Do's and Don'ts for the user to follow.
             Tell the user if and when to see a GP or doctor.
+            If user asks questions unrelated to medical diagnosis,reply with "I'm sorry, but I can only assist with medical diagnosis."
             Offer extra assistance or guidance that you can give related to user's query if needed.
             Provide no other text.
             {format_instructions}
@@ -50,9 +51,15 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 ).partial(format_instructions=parser.get_format_instructions())
 
+
+#--------------------------------
+# iteration limiter
+#--------------------------------
 tools = [search_tool, save_tool]
 agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, max_iterations=15)
+
+
 
 # -------------------------------
 # Chatbot Processing Function
