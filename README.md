@@ -15,7 +15,11 @@ In your terminal run
 docker run -d -p 6379:6379 --name redis redis
 uvicorn main:app --reload
 ```
-To stop
+To check which containers are running in docker
+```sh
+docker ps
+```
+To stop redis
 ```sh
 docker stop redis
 ```
