@@ -50,11 +50,10 @@ prompt = ChatPromptTemplate.from_messages(
 ).partial(format_instructions=parser.get_format_instructions())
 
 
-#--------------------------------
-# iteration limiter
-#--------------------------------
-# Tools
+# Iteration limiter
 tools = [search_tool, save_tool]
+agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, max_iterations=15)
 
 # Multi-user memory store
 MEMORY_DIR = "user_memories"
