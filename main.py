@@ -37,6 +37,7 @@ prompt = ChatPromptTemplate.from_messages(
             Give a list of symptoms that match the user's query, matched to the illness they might have.
             Give some Do's and Don'ts for the user to follow.
             Tell the user if and when to see a GP or doctor.
+            If user asks questions unrelated to medical diagnosis,reply with "I'm sorry, but I can only assist with medical diagnosis."
             Offer extra assistance or guidance that you can give related to user's query if needed.
             Provide no other text.
             {format_instructions}
@@ -48,6 +49,10 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 ).partial(format_instructions=parser.get_format_instructions())
 
+
+#--------------------------------
+# iteration limiter
+#--------------------------------
 # Tools
 tools = [search_tool, save_tool]
 
@@ -71,7 +76,9 @@ def save_memory(user_id: str, memory: ConversationBufferMemory):
 async def chatbot_main(query: str, user_id: str) -> str:
     memory = load_memory(user_id)
     agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, memory=memory)
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, memory=memory, max_iterations=15)
+
+
 
     raw_response = await agent_executor.ainvoke({"query": query})
     save_memory(user_id, memory)
