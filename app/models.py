@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class ResearchResponse(BaseModel):
     summary: str
     symptoms: list[str]
@@ -8,6 +9,7 @@ class ResearchResponse(BaseModel):
     gp: list[str]
     sources: list[str]
     assistance: str
+
 
 class QueryModel(BaseModel):
     query: str

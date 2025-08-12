@@ -3,9 +3,10 @@ from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.tools import Tool
 from datetime import datetime
 
+
 def save_to_txt(data: str, filename: str = "history.txt"):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    formatted_text = ("--- Research Output ---\n" "Timestamp: {timestamp}\n\n{data}\n\n").format(
+    formatted_text = ("--- Research Output ---\n" "Timestamp: {}\n\n{}\n\n").format(
         timestamp, data
     )
 
@@ -19,9 +20,6 @@ def save_to_cache(text: str, filename="latest_response.txt"):
     with open(filename, "w", encoding="utf-8") as f:
         f.write(text)
 
-def save_to_cache(text: str, filename="latest_response.txt"):
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(text)
 
 save_tool = Tool(
     name="save_text_to_file",

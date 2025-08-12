@@ -5,3 +5,4 @@ __pycache__/
 history.txt
 latest_response.txt
 user_memories/
+.mypy_cache/

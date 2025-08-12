@@ -23,10 +23,10 @@ prompt = ChatPromptTemplate.from_messages(
                 "Do's and Don'ts for the user to follow. Tell the user if and when to "
                 "see a GP or doctor. If user asks questions unrelated to medical "
                 "diagnosis, reply with \"I'm sorry, but I can only assist with medical "
-                "diagnosis.\", but if user query is following on from a response you "
+                'diagnosis.", but if user query is following on from a response you '
                 "previously gave, provide a helpful response. If user symptoms are "
-                "extreme, tell them \"Your symptoms are quite severe, I suggest you "
-                "call 999 immediately\" Offer extra assistance or guidance that you "
+                'extreme, tell them "Your symptoms are quite severe, I suggest you '
+                'call 999 immediately" Offer extra assistance or guidance that you '
                 "can give related to user's query if needed. Provide no other text."
                 "{format_instructions}"
             ),
@@ -39,16 +39,14 @@ prompt = ChatPromptTemplate.from_messages(
 
 tools = [search_tool, save_tool]
 
+
 def create_agent(memory):
     agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
     agent_executor = AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=True,
-        memory=memory,
-        max_iterations=15
+        agent=agent, tools=tools, verbose=True, memory=memory, max_iterations=15
     )
     return agent_executor, parser
+
 
 def format_memory_to_string(memory) -> str:
     messages = memory.load_memory_variables({}).get("chat_history", [])
