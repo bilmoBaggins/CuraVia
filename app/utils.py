@@ -12,7 +12,12 @@ def save_to_txt(data: str, filename: str = "history.txt"):
     with open(filename, "a", encoding="utf-8") as f:
         f.write(formatted_text)
 
-    return f"Data successfully saved to {filename}"
+    return "Data successfully saved to {}".format(filename)
+
+
+def save_to_cache(text: str, filename="latest_response.txt"):
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(text)
 
 def save_to_cache(text: str, filename="latest_response.txt"):
     with open(filename, "w", encoding="utf-8") as f:
