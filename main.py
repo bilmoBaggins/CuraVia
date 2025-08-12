@@ -45,7 +45,6 @@ prompt = ChatPromptTemplate.from_messages(
                 "related to user's query if needed. Provide no other text. "
                 "{format_instructions}"
             ),
-        ),
         ("placeholder", "{chat_history}"),
         ("human", "{query}"),
         ("placeholder", "{agent_scratchpad}"),
