@@ -8,3 +8,4 @@ pydantic
 duckduckgo-search
 fastapi
 uvicorn
+redis

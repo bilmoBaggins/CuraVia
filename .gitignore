@@ -2,5 +2,6 @@
 .vs/
 venv/
 __pycache__/
-research_output.txt
+history.txt
+latest_response.txt
 user_memories/
