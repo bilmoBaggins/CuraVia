@@ -13,6 +13,7 @@ import pickle
 # Load environment variables
 load_dotenv()
 
+
 # Response model
 class ResearchResponse(BaseModel):
     summary: str
@@ -22,6 +23,7 @@ class ResearchResponse(BaseModel):
     gp: list[str]
     sources: list[str]
     assistance: str
+
 
 # LLM and parser setup
 llm = ChatOpenAI(model="gpt-4o-mini")
@@ -53,11 +55,14 @@ prompt = ChatPromptTemplate.from_messages(
 # Iteration limiter
 tools = [search_tool, save_tool]
 agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, max_iterations=15)
+agent_executor = AgentExecutor(
+    agent=agent, tools=tools, verbose=True, max_iterations=15
+)
 
 # Multi-user memory store
 MEMORY_DIR = "user_memories"
 os.makedirs(MEMORY_DIR, exist_ok=True)
+
 
 def load_memory(user_id: str) -> ConversationBufferMemory:
     filepath = os.path.join(MEMORY_DIR, f"{user_id}.pkl")
@@ -66,18 +71,20 @@ def load_memory(user_id: str) -> ConversationBufferMemory:
             return pickle.load(f)
     return ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
+
 def save_memory(user_id: str, memory: ConversationBufferMemory):
     filepath = os.path.join(MEMORY_DIR, f"{user_id}.pkl")
     with open(filepath, "wb") as f:
         pickle.dump(memory, f)
 
+
 # Chatbot function
 async def chatbot_main(query: str, user_id: str) -> str:
     memory = load_memory(user_id)
     agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, memory=memory, max_iterations=15)
-
-
+    agent_executor = AgentExecutor(
+        agent=agent, tools=tools, verbose=True, memory=memory, max_iterations=15
+    )
 
     raw_response = await agent_executor.ainvoke({"query": query})
     save_memory(user_id, memory)
@@ -87,33 +94,47 @@ async def chatbot_main(query: str, user_id: str) -> str:
         formatted_output = structured_response.summary
 
         if structured_response.symptoms:
-            formatted_output += f"\n\nCommon symptoms:\n- " + "\n- ".join(structured_response.symptoms)
+            formatted_output += f"\n\nCommon symptoms:\n- " + "\n- ".join(
+                structured_response.symptoms
+            )
         if structured_response.do:
             formatted_output += f"\n\nDo's:\n- " + "\n- ".join(structured_response.do)
         if structured_response.dont:
-            formatted_output += f"\n\nDon'ts:\n- " + "\n- ".join(structured_response.dont)
+            formatted_output += f"\n\nDon'ts:\n- " + "\n- ".join(
+                structured_response.dont
+            )
         if structured_response.gp:
-            formatted_output += f"\n\nWhen to see a GP:\n- " + "\n- ".join(structured_response.gp)
+            formatted_output += f"\n\nWhen to see a GP:\n- " + "\n- ".join(
+                structured_response.gp
+            )
         if structured_response.sources:
-            formatted_output += f"\n\nSources:\n- " + "\n- ".join(structured_response.sources)
+            formatted_output += f"\n\nSources:\n- " + "\n- ".join(
+                structured_response.sources
+            )
         if structured_response.assistance:
-            formatted_output += f"\n\n--------------------\n\n{structured_response.assistance}"
+            formatted_output += (
+                f"\n\n--------------------\n\n{structured_response.assistance}"
+            )
 
         save_to_txt(formatted_output)
         return formatted_output
     except Exception as e:
         return f"Error parsing response {e}\nRaw response: {raw_response}"
 
+
 # FastAPI app
 app = FastAPI(title="CuraVia", version="1.0")
+
 
 @app.get("/")
 def root():
     return {"message": "CuraVia is running"}
 
+
 class QueryModel(BaseModel):
     query: str
     user_id: str
+
 
 @app.post("/ask")
 async def ask_question(body: QueryModel):
