@@ -5,15 +5,15 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain.memory import ConversationBufferMemory
 from my_tools import search_tool, save_tool, save_to_txt
 import os
+import pickle
 
 # Load environment variables
 load_dotenv()
 
-# -------------------------------
-# Define Response Model
-# -------------------------------
+# Response model
 class ResearchResponse(BaseModel):
     summary: str
     symptoms: list[str]
@@ -23,9 +23,7 @@ class ResearchResponse(BaseModel):
     sources: list[str]
     assistance: str
 
-# -------------------------------
-# LangChain Setup
-# -------------------------------
+# LLM and parser setup
 llm = ChatOpenAI(model="gpt-4o-mini")
 parser = PydanticOutputParser(pydantic_object=ResearchResponse)
 
@@ -50,20 +48,38 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 ).partial(format_instructions=parser.get_format_instructions())
 
+# Tools
 tools = [search_tool, save_tool]
-agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-# -------------------------------
-# Chatbot Processing Function
-# -------------------------------
-async def chatbot_main(query: str) -> str:
+# Multi-user memory store
+MEMORY_DIR = "user_memories"
+os.makedirs(MEMORY_DIR, exist_ok=True)
+
+def load_memory(user_id: str) -> ConversationBufferMemory:
+    filepath = os.path.join(MEMORY_DIR, f"{user_id}.pkl")
+    if os.path.exists(filepath):
+        with open(filepath, "rb") as f:
+            return pickle.load(f)
+    return ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
+def save_memory(user_id: str, memory: ConversationBufferMemory):
+    filepath = os.path.join(MEMORY_DIR, f"{user_id}.pkl")
+    with open(filepath, "wb") as f:
+        pickle.dump(memory, f)
+
+# Chatbot function
+async def chatbot_main(query: str, user_id: str) -> str:
+    memory = load_memory(user_id)
+    agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, memory=memory)
+
     raw_response = await agent_executor.ainvoke({"query": query})
+    save_memory(user_id, memory)
 
     try:
         structured_response = parser.parse(raw_response.get("output"))
-
         formatted_output = structured_response.summary
+
         if structured_response.symptoms:
             formatted_output += f"\n\nCommon symptoms:\n- " + "\n- ".join(structured_response.symptoms)
         if structured_response.do:
@@ -82,19 +98,18 @@ async def chatbot_main(query: str) -> str:
     except Exception as e:
         return f"Error parsing response {e}\nRaw response: {raw_response}"
 
-# -------------------------------
-# FastAPI App
-# -------------------------------
-app = FastAPI(title="Medical Assistant API", version="1.0")
+# FastAPI app
+app = FastAPI(title="CuraVia", version="1.0")
 
 @app.get("/")
 def root():
-    return {"message": "Medical assistant API is running"}
+    return {"message": "CuraVia is running"}
 
 class QueryModel(BaseModel):
     query: str
+    user_id: str
 
 @app.post("/ask")
 async def ask_question(body: QueryModel):
-    response = await chatbot_main(body.query)
+    response = await chatbot_main(body.query, body.user_id)
     return {"response": response}
