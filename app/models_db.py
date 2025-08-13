@@ -3,14 +3,17 @@ from sqlalchemy import Integer, String, Text, Enum, ForeignKey, TIMESTAMP
 from sqlalchemy.sql import func
 import enum
 
+
 # Base class
 class Base(DeclarativeBase):
     pass
+
 
 # Enum for sender
 class SenderEnum(str, enum.Enum):
     user = "user"
     assistant = "assistant"
+
 
 # User table
 class User(Base):
@@ -20,6 +23,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(100), unique=True)
     email: Mapped[str] = mapped_column(String(255), unique=True)
     created_at: Mapped = mapped_column(TIMESTAMP, server_default=func.now())
+
 
 # ChatHistory table
 class ChatHistory(Base):

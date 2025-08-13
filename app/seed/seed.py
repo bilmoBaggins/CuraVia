@@ -14,9 +14,11 @@ if DATABASE_URL is None:
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(bind=engine)
 
+
 # Base class
 class Base(DeclarativeBase):
     pass
+
 
 # User table
 class User(Base):
@@ -27,6 +29,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     created_at: Mapped = mapped_column(TIMESTAMP, default=datetime.now)
 
+
 # ChatHistory table
 class ChatHistory(Base):
     __tablename__ = "chat_history"
@@ -36,6 +39,7 @@ class ChatHistory(Base):
     message: Mapped[str] = mapped_column(Text)
     sender: Mapped[str] = mapped_column(Enum("user", "assistant"))
     timestamp: Mapped = mapped_column(TIMESTAMP, default=datetime.now)
+
 
 # Seeder function
 def seed() -> None:
@@ -50,14 +54,23 @@ def seed() -> None:
     # New sample chat history
     chats = [
         ChatHistory(user_id=user1.id, message="I stubbed my toe", sender="user"),
-        ChatHistory(user_id=user1.id, message="See a GP if your pain carries on for more than 3 days", sender="assistant"),
-        ChatHistory(user_id=user2.id, message="I have a hole in my side", sender="user"),
-        ChatHistory(user_id=user2.id, message="I suggest you call 999", sender="assistant"),
+        ChatHistory(
+            user_id=user1.id,
+            message="See a GP if your pain carries on for more than 3 days",
+            sender="assistant",
+        ),
+        ChatHistory(
+            user_id=user2.id, message="I have a hole in my side", sender="user"
+        ),
+        ChatHistory(
+            user_id=user2.id, message="I suggest you call 999", sender="assistant"
+        ),
     ]
     session.add_all(chats)
     session.commit()
     session.close()
     print("Seeding complete!")
+
 
 if __name__ == "__main__":
     Base.metadata.create_all(engine)
