@@ -29,11 +29,6 @@ alembic revision --autogenerate -m "create users and chat_history tables" # to c
 alembic upgrade head # to update pending migrations
 ```
 
-In your terminal run
-```sh
-uvicorn main:app --reload
-```
-
 #
 
 
@@ -42,7 +37,7 @@ uvicorn main:app --reload
 ```sh
 docker compose down # to stop docker
 ```
-And ctrl+c in your terminal to quit uvicorn.
+
 #
 
 
@@ -52,7 +47,6 @@ And ctrl+c in your terminal to quit uvicorn.
 ```sh
 docker compose up -d
 alembic upgrade head
-uvicorn main:app --reload
 ```
 
 #
