@@ -58,6 +58,16 @@ uvicorn main:app --reload
 #
 
 
+### To use test seeder data
+
+```sh
+docker compose run --rm fastapi python seed/seed.py
+```
+Then go to your db and refresh to see the data.
+
+#
+
+
 ### To quality check locally
 
 Install required packages
