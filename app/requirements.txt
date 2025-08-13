@@ -1,11 +1,14 @@
 langchain
-wikipedia
 langchain-community
 langchain-openai
-langchain-anthropic
 python-dotenv
 pydantic
 duckduckgo-search
 fastapi
 uvicorn
 redis
+mysql-connector-python
+sqlalchemy
+alembic
+pymysql
+psycopg2
