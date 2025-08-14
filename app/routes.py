@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from models import QueryModel
-from memory import load_memory, history_to_db, redis_client, REDIS_EXPIRATION_SECONDS
+from memory import load_memory, history_to_db
 from agent import create_agent, format_memory_to_string
 from utils import save_to_txt, save_to_cache
 from datetime import datetime
