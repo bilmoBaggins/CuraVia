@@ -9,21 +9,22 @@ REDIS_URL = os.getenv("REDIS_URL", "")
 REDIS_EXPIRATION_SECONDS = int(os.getenv("REDIS_EXPIRATION_SECONDS", 24 * 3600))
 redis_client = redis.Redis.from_url(REDIS_URL)
 
+
 class CustomMemory(ConversationBufferMemory):
     def add_user_message(self, message: str):
-        super().add_user_message(message)
+        super().add_user_message(message)  # type: ignore
         save_message_to_db(
             sender="user",
             message=message,
-            timestamp=self.chat_memory.get_last_message_timestamp(),
+            timestamp=self.chat_memory.get_last_message_timestamp(),  # type: ignore
         )
 
     def add_ai_message(self, message: str):
-        super().add_ai_message(message)
+        super().add_ai_message(message)  # type: ignore
         save_message_to_db(
             sender="ai",
             message=message,
-            timestamp=self.chat_memory.get_last_message_timestamp(),
+            timestamp=self.chat_memory.get_last_message_timestamp(),  # type: ignore
         )
 
 
@@ -32,14 +33,15 @@ def load_memory(user_id: int) -> CustomMemory:
     Load conversation memory for a given user.
     Stores history in Redis and also persists each message to MySQL.
     """
-    session_key = f"message_store:{user_id}"
-    history = RedisChatMessageHistory(session_id=str(user_id), url=REDIS_URL)
+    # session_key = f"message_store:{user_id}"
+    history = RedisChatMessageHistory(
+        session_id=str(user_id), url=REDIS_URL
+    )  # type: ignore
 
     return CustomMemory(
-        memory_key="chat_history",
-        return_messages=True,
-        chat_memory=history
+        memory_key="chat_history", return_messages=True, chat_memory=history
     )
+
 
 def save_message_to_db(message: str, sender: str, timestamp: str):
     """
