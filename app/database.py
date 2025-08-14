@@ -1,4 +1,3 @@
-# database.py
 import mysql.connector
 import os
 

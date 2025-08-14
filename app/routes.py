@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 from models import QueryModel
-from memory import load_memory, redis_client, REDIS_EXPIRATION_SECONDS
+from memory import load_memory, history_to_db
 from agent import create_agent, format_memory_to_string
 from utils import save_to_txt, save_to_cache
+from datetime import datetime
 
 router = APIRouter()
 
@@ -18,9 +19,6 @@ async def ask_question(body: QueryModel):
     raw_response = await agent_executor.ainvoke(
         {"query": body.query, "chat_history": chat_history_str}
     )
-
-    # Refresh TTL after use
-    redis_client.expire(f"message_store:{body.user_id}", REDIS_EXPIRATION_SECONDS)
 
     try:
         output_text = raw_response.get("output") or raw_response.get("output_text", "")
@@ -55,6 +53,7 @@ async def ask_question(body: QueryModel):
 
             save_to_txt(formatted_output)
             save_to_cache(formatted_output)
+            history_to_db(body.user_id, body.query, formatted_output, datetime.now())
             return {"response": formatted_output}
 
         except Exception:

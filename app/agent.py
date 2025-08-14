@@ -54,6 +54,6 @@ def format_memory_to_string(memory) -> str:
     # messages are BaseMessage objects (human or ai)
     history_str = ""
     for msg in messages:
-        role = "User" if msg.type == "human" else "Assistant"
+        role = "user" if msg.type == "human" else "ai"
         history_str += f"{role}: {msg.content}\n"
     return history_str.strip()

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Text, Enum, ForeignKey, TIMESTAMP
 from sqlalchemy.sql import func
+from datetime import datetime
 import enum
 
 
@@ -12,7 +13,7 @@ class Base(DeclarativeBase):
 # Enum for sender
 class SenderEnum(str, enum.Enum):
     user = "user"
-    assistant = "assistant"
+    assistant = "ai"
 
 
 # User table
@@ -22,7 +23,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(100), unique=True)
     email: Mapped[str] = mapped_column(String(255), unique=True)
-    created_at: Mapped = mapped_column(TIMESTAMP, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
 
 
 # ChatHistory table
@@ -33,4 +34,4 @@ class ChatHistory(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     message: Mapped[str] = mapped_column(Text)
     sender: Mapped[SenderEnum] = mapped_column(Enum(SenderEnum))
-    timestamp: Mapped = mapped_column(TIMESTAMP, server_default=func.now())
+    timestamp: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
