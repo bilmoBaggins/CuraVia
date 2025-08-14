@@ -11,4 +11,3 @@ mysql-connector-python
 sqlalchemy
 alembic
 pymysql
-psycopg2
