@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from models_db import ChatHistory
-from datetime import datetime
 
 load_dotenv()
 
@@ -35,21 +34,29 @@ def load_memory(user_id: int) -> ConversationBufferMemory:
     )
 
 
-def history_to_db(
-    user_id: int, user_message: str, ai_message: str, timestamp: datetime
-) -> None:
+def history_to_db(user_id, user_message, ai_message, timestamp, ai_sender_label="ai"):
     session = SessionLocal()
-    chats = [
-        ChatHistory(
-            user_id=user_id,
-            message=user_message,
-            sender="user",
-            timestamp=timestamp,
-        ),
-        ChatHistory(
-            user_id=user_id, message=ai_message, sender="ai", timestamp=timestamp
-        ),
-    ]
-    session.add_all(chats)
-    session.commit()
-    session.close()
+    try:
+        session.add_all(
+            [
+                ChatHistory(
+                    user_id=user_id,
+                    message=user_message,
+                    sender="user",
+                    timestamp=timestamp,
+                ),
+                ChatHistory(
+                    user_id=user_id,
+                    message=ai_message,
+                    sender=ai_sender_label,
+                    timestamp=timestamp,
+                ),
+            ]
+        )
+        session.commit()
+        print("Chat history committed successfully")
+    except Exception as e:
+        session.rollback()
+        print("Failed to save chat history:", e)
+    finally:
+        session.close()
