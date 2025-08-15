@@ -26,8 +26,12 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(100), unique=True)
+    password: Mapped[str] = mapped_column(String(255))
+    first_name: Mapped[str] = mapped_column(String(100))
+    last_name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(255), unique=True)
-    created_at: Mapped = mapped_column(TIMESTAMP, default=datetime.now)
+    location: Mapped[str] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
 
 
 # ChatHistory table
@@ -37,8 +41,8 @@ class ChatHistory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     message: Mapped[str] = mapped_column(Text)
-    sender: Mapped[str] = mapped_column(Enum("user", "assistant"))
-    timestamp: Mapped = mapped_column(TIMESTAMP, default=datetime.now)
+    sender: Mapped[str] = mapped_column(Enum("user", "ai"))
+    timestamp: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
 
 
 # Seeder function
@@ -46,8 +50,8 @@ def seed() -> None:
     session = SessionLocal()
 
     # New sample users
-    user1 = User(username="faraz", email="faraz@example.com")
-    user2 = User(username="gabe", email="gabe@example.com")
+    user1 = User(username="amal23", password="amalamal", first_name="amal", last_name="khan", email="amal@example.com", location="London")
+    user2 = User(username="ben01", password="benneb1", first_name="ben", last_name="smith", email="ben@example.com", location="Japan")
     session.add_all([user1, user2])
     session.commit()
 
@@ -57,13 +61,13 @@ def seed() -> None:
         ChatHistory(
             user_id=user1.id,
             message="See a GP if your pain carries on for more than 3 days",
-            sender="assistant",
+            sender="ai",
         ),
         ChatHistory(
             user_id=user2.id, message="I have a hole in my side", sender="user"
         ),
         ChatHistory(
-            user_id=user2.id, message="I suggest you call 999", sender="assistant"
+            user_id=user2.id, message="I suggest you call 999", sender="ai"
         ),
     ]
     session.add_all(chats)
