@@ -20,6 +20,8 @@ async def ask_question(body: QueryModel):
         {"query": body.query, "chat_history": chat_history_str}
     )
 
+    # Default output in case parsing fails
+    formatted_output = ""
     try:
         output_text = raw_response.get("output") or raw_response.get("output_text", "")
         try:
@@ -50,14 +52,34 @@ async def ask_question(body: QueryModel):
                 formatted_output += (
                     f"\n\n--------------------\n\n{structured_response.assistance}"
                 )
-
-            save_to_txt(formatted_output)
-            save_to_cache(formatted_output)
-            history_to_db(body.user_id, body.query, formatted_output, datetime.now())
-            return {"response": formatted_output}
-
         except Exception:
-            return output_text.strip()
+            # fallback if parsing fails
+            formatted_output = output_text.strip()
 
     except Exception as e:
-        return {"response": f"Error parsing response {e}\nRaw response: {raw_response}"}
+        formatted_output = f"Error parsing response {e}\nRaw response: {raw_response}"
+
+    # Attempt to save to DB, always run regardless of above errors
+    try:
+        history_to_db(
+            body.user_id,
+            body.query,
+            formatted_output,
+            datetime.now(),
+            ai_sender_label="ai",
+        )
+    except Exception as db_err:
+        print("Failed to save chat history:", db_err)
+
+    # Optional: still try saving to text/cache but don't block DB insert
+    try:
+        save_to_txt(formatted_output)
+    except Exception as e:
+        print("Failed to save to txt:", e)
+
+    try:
+        save_to_cache(formatted_output)
+    except Exception as e:
+        print("Failed to save to cache:", e)
+
+    return {"response": formatted_output}
