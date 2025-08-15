@@ -50,8 +50,22 @@ def seed() -> None:
     session = SessionLocal()
 
     # New sample users
-    user1 = User(username="amal23", password="amalamal", first_name="amal", last_name="khan", email="amal@example.com", location="London")
-    user2 = User(username="ben01", password="benneb1", first_name="ben", last_name="smith", email="ben@example.com", location="Japan")
+    user1 = User(
+        username="amal23",
+        password="amalamal",
+        first_name="amal",
+        last_name="khan",
+        email="amal@example.com",
+        location="London",
+    )
+    user2 = User(
+        username="ben01",
+        password="benneb1",
+        first_name="ben",
+        last_name="smith",
+        email="ben@example.com",
+        location="Japan",
+    )
     session.add_all([user1, user2])
     session.commit()
 
@@ -66,9 +80,7 @@ def seed() -> None:
         ChatHistory(
             user_id=user2.id, message="I have a hole in my side", sender="user"
         ),
-        ChatHistory(
-            user_id=user2.id, message="I suggest you call 999", sender="ai"
-        ),
+        ChatHistory(user_id=user2.id, message="I suggest you call 999", sender="ai"),
     ]
     session.add_all(chats)
     session.commit()
