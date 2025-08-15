@@ -11,3 +11,4 @@ mysql-connector-python
 sqlalchemy
 alembic
 pymysql
+cryptography

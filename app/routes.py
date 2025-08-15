@@ -66,7 +66,7 @@ async def ask_question(body: QueryModel):
             body.query,
             formatted_output,
             datetime.now(),
-            ai_sender_label="ai",
+            ai_sender_label="assistant",
         )
     except Exception as db_err:
         print("Failed to save chat history:", db_err)

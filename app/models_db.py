@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 # Enum for sender
 class SenderEnum(str, enum.Enum):
     user = "user"
-    assistant = "ai"
+    assistant = "assistant"
 
 
 # User table

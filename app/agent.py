@@ -28,6 +28,7 @@ prompt = ChatPromptTemplate.from_messages(
                 'extreme, tell them "Your symptoms are quite severe, I suggest you '
                 'call 999 immediately." Always ask '
                 "an appropriate question related to the conversation "
+                "If user corrects you in any way, acknowledge the correction, apologise and adjust your response accordingly "
                 "to encourage further discussion. Provide no other text."
                 "{format_instructions}"
             ),
@@ -54,6 +55,6 @@ def format_memory_to_string(memory) -> str:
     # messages are BaseMessage objects (human or ai)
     history_str = ""
     for msg in messages:
-        role = "user" if msg.type == "human" else "ai"
+        role = "user" if msg.type == "human" else "assistant"
         history_str += f"{role}: {msg.content}\n"
     return history_str.strip()

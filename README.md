@@ -25,8 +25,8 @@ docker ps -a # to view all running containers
 
 Automatically create db, and users and chat_history tables for the first time
 ```sh
-alembic revision --autogenerate -m "create users and chat_history tables" # to create a new migration
-alembic upgrade head # to update pending migrations
+docker compose run --rm fastapi alembic revision --autogenerate -m "create users and chat_history tables" # to create a new migration
+docker compose run --rm fastapi alembic upgrade head # to update pending migrations
 ```
 
 #
@@ -46,7 +46,7 @@ docker compose down # to stop docker
 
 ```sh
 docker compose up -d
-alembic upgrade head
+docker compose run --rm fastapi alembic upgrade head
 ```
 
 #

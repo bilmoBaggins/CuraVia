@@ -41,7 +41,7 @@ class ChatHistory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     message: Mapped[str] = mapped_column(Text)
-    sender: Mapped[str] = mapped_column(Enum("user", "ai"))
+    sender: Mapped[str] = mapped_column(Enum("user", "assistant"))
     timestamp: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
 
 
@@ -75,12 +75,12 @@ def seed() -> None:
         ChatHistory(
             user_id=user1.id,
             message="See a GP if your pain carries on for more than 3 days",
-            sender="ai",
+            sender="assistant",
         ),
         ChatHistory(
             user_id=user2.id, message="I have a hole in my side", sender="user"
         ),
-        ChatHistory(user_id=user2.id, message="I suggest you call 999", sender="ai"),
+        ChatHistory(user_id=user2.id, message="I suggest you call 999", sender="assistant"),
     ]
     session.add_all(chats)
     session.commit()
