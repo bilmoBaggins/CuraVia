@@ -39,19 +39,17 @@ def history_to_db(
     user_id: int, user_message: str, ai_message: str, timestamp: datetime
 ) -> None:
     session = SessionLocal()
-    try:
-        chats = [
-            ChatHistory(
-                user_id=user_id,
-                message=user_message,
-                sender="user",
-                timestamp=timestamp,
-            ),
-            ChatHistory(
-                user_id=user_id, message=ai_message, sender="ai", timestamp=timestamp
-            ),
-        ]
-        session.add_all(chats)
-        session.commit()
-    finally:
-        session.close()
+    chats = [
+        ChatHistory(
+            user_id=user_id,
+            message=user_message,
+            sender="user",
+            timestamp=timestamp,
+        ),
+        ChatHistory(
+            user_id=user_id, message=ai_message, sender="ai", timestamp=timestamp
+        ),
+    ]
+    session.add_all(chats)
+    session.commit()
+    session.close()

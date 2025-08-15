@@ -1,8 +1,8 @@
 """create users and chat_history tables
 
-Revision ID: 54d23279bb18
+Revision ID: 2978f878ad2c
 Revises:
-Create Date: 2025-08-13 11:15:11.771319
+Create Date: 2025-08-14 16:42:00.118074
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "54d23279bb18"
+revision: str = "2978f878ad2c"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,10 +25,17 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("username", sa.String(length=100), nullable=True),
-        sa.Column("email", sa.String(length=255), nullable=True),
+        sa.Column("username", sa.String(length=100), nullable=False),
+        sa.Column("password", sa.String(length=255), nullable=False),
+        sa.Column("first_name", sa.String(length=255), nullable=True),
+        sa.Column("last_name", sa.String(length=255), nullable=True),
+        sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("location", sa.String(length=255), nullable=False),
         sa.Column(
-            "created_at", sa.TIMESTAMP(), server_default=sa.text("now()"), nullable=True
+            "created_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("email"),
@@ -37,13 +44,11 @@ def upgrade() -> None:
     op.create_table(
         "chat_history",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=True),
-        sa.Column("message", sa.Text(), nullable=True),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("message", sa.Text(), nullable=False),
+        sa.Column("sender", sa.Enum("user", "ai", name="senderenum"), nullable=False),
         sa.Column(
-            "sender", sa.Enum("user", "assistant", name="senderenum"), nullable=True
-        ),
-        sa.Column(
-            "timestamp", sa.TIMESTAMP(), server_default=sa.text("now()"), nullable=True
+            "timestamp", sa.TIMESTAMP(), server_default=sa.text("now()"), nullable=False
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],
