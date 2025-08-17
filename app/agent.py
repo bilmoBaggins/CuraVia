@@ -28,7 +28,8 @@ prompt = ChatPromptTemplate.from_messages(
                 'extreme, tell them "Your symptoms are quite severe, I suggest you '
                 'call 999 immediately." Always ask '
                 "an appropriate question related to the conversation "
-                "If user corrects you in any way, acknowledge the correction, apologise and adjust your response accordingly "
+                "If user corrects you in any way, acknowledge the correction, "
+                "apologise and adjust your response accordingly "
                 "to encourage further discussion. Provide no other text."
                 "{format_instructions}"
             ),

@@ -80,7 +80,9 @@ def seed() -> None:
         ChatHistory(
             user_id=user2.id, message="I have a hole in my side", sender="user"
         ),
-        ChatHistory(user_id=user2.id, message="I suggest you call 999", sender="assistant"),
+        ChatHistory(
+            user_id=user2.id, message="I suggest you call 999", sender="assistant"
+        ),
     ]
     session.add_all(chats)
     session.commit()

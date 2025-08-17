@@ -34,7 +34,9 @@ def load_memory(user_id: int) -> ConversationBufferMemory:
     )
 
 
-def history_to_db(user_id, user_message, ai_message, timestamp, ai_sender_label="assistant"):
+def history_to_db(
+    user_id, user_message, ai_message, timestamp, ai_sender_label="assistant"
+):
     session = SessionLocal()
     try:
         session.add_all(

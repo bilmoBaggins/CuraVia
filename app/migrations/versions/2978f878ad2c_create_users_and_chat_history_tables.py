@@ -46,7 +46,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("message", sa.Text(length=10000), nullable=False),
-        sa.Column("sender", sa.Enum("user", "assistant", name="senderenum"), nullable=False),
+        sa.Column(
+            "sender", sa.Enum("user", "assistant", name="senderenum"), nullable=False
+        ),
         sa.Column(
             "timestamp", sa.TIMESTAMP(), server_default=sa.text("now()"), nullable=False
         ),
