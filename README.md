@@ -9,6 +9,7 @@ Create and activate a virtual environment, then install all the required package
 ```sh
 python -m venv venv
 .\venv\Scripts\activate
+notepad $env:USERPROFILE\.docker\config.json # to open notepad, then delete the line ""credsStore": "desktop"" and save
 docker-compose up --build # to install all dependencies and run the program
 ```
 Whenever a new dependency is added to requirements.txt the build command must be run again.
