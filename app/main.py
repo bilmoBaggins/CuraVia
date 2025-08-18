@@ -8,7 +8,4 @@ app.include_router(router)
 
 @app.get("/")
 def root():
-    return {
-        "message": "CuraVia is running",
-        "status": status.HTTP_200_OK
-    }
+    return {"message": "CuraVia is running", "status": status.HTTP_200_OK}

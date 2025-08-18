@@ -3,7 +3,6 @@ from datetime import datetime
 from sqlalchemy import create_engine, Integer, String, Text, Enum, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from dotenv import load_dotenv
-from fastapi import status
 
 load_dotenv()
 
@@ -88,10 +87,7 @@ def seed() -> None:
     session.add_all(chats)
     session.commit()
     session.close()
-    return{
-        "message": "Seeding complete!",
-        "status": status.HTTP_201_CREATED
-    }
+    print("Seeding complete!")
 
 
 if __name__ == "__main__":

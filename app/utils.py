@@ -15,7 +15,7 @@ def save_to_txt(data: str, filename: str = "history.txt"):
 
     return {
         "message": f"Data successfully saved to {filename}",
-        "status": status.HTTP_200_OK
+        "status": status.HTTP_200_OK,
     }
 
 

@@ -15,6 +15,7 @@ class QueryModel(BaseModel):
     query: str
     user_id: int
 
+
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -22,6 +23,7 @@ class UserCreate(BaseModel):
     last_name: str
     email: str
     location: str
+
 
 class UserLogin(BaseModel):
     username: str
