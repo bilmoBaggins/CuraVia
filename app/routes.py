@@ -1,11 +1,25 @@
-from fastapi import APIRouter
-from models import QueryModel
-from memory import load_memory, history_to_db
+from fastapi import APIRouter, status
+from models import QueryModel, UserCreate, UserLogin
+from models_db import User
+from memory import SessionLocal, load_memory, history_to_db, newUser_to_db
 from agent import create_agent, format_memory_to_string
 from utils import save_to_txt, save_to_cache
 from datetime import datetime
+from passlib.context import CryptContext
 
 router = APIRouter()
+
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 @router.post("/ask")
@@ -61,25 +75,90 @@ async def ask_question(body: QueryModel):
 
     # Attempt to save to DB, always run regardless of above errors
     try:
-        history_to_db(
-            body.user_id,
-            body.query,
-            formatted_output,
-            datetime.now(),
-            ai_sender_label="assistant",
-        )
-    except Exception as db_err:
-        print("Failed to save chat history:", db_err)
+        history_to_db(body.user_id, body.query, formatted_output, datetime.now())
+    except Exception as e:
+        return {
+            "error": f"Failed to save chat history: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
 
     # Optional: still try saving to text/cache but don't block DB insert
     try:
         save_to_txt(formatted_output)
     except Exception as e:
-        print("Failed to save to txt:", e)
+        return {
+            "error": f"Failed to save response to text file: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
 
     try:
         save_to_cache(formatted_output)
     except Exception as e:
-        print("Failed to save to cache:", e)
+        return {
+            "error": f"Failed to save response to cache: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
 
-    return {"response": formatted_output}
+    return {"message": formatted_output, "status": status.HTTP_200_OK}
+
+
+@router.post("/signup")
+async def signup_user(body: UserCreate):
+    session = SessionLocal()
+    try:
+
+        existing_user = (
+            session.query(User).filter(User.email == body.email).first()
+            or session.query(User).filter(User.username == body.username).first()
+        )
+        if existing_user:
+            return {
+                "error": "Username or email already used.",
+                "status": status.HTTP_409_CONFLICT,
+            }
+
+        # Hash the password before storing
+        hashed_password = hash_password(body.password)
+
+        newUser_to_db(
+            body.username,
+            hashed_password,
+            body.first_name,
+            body.last_name,
+            body.email,
+            body.location,
+        )
+        return {
+            "message": "User created successfully.",
+            "status": status.HTTP_201_CREATED,
+        }
+    except Exception as e:
+        return {
+            "error": f"Failed to create new user: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+
+@router.post("/login")
+async def login_user(body: UserLogin):
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.username == body.username).first()
+        if not user:
+            return {"error": "User not found.", "status": status.HTTP_404_NOT_FOUND}
+        else:
+            if verify_password(body.password, user.password):
+                return {
+                    "message": "Login successful.",
+                    "status": status.HTTP_200_OK,
+                }
+            else:
+                return {
+                    "error": "Invalid password.",
+                    "status": status.HTTP_401_UNAUTHORIZED,
+                }
+    except Exception as e:
+        return {
+            "error": f"Login failed: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
