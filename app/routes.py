@@ -4,8 +4,13 @@ from models_db import User
 from memory import SessionLocal, load_memory, history_to_db, newUser_to_db
 from agent import create_agent, format_memory_to_string
 from utils import save_to_txt, save_to_cache
-from datetime import datetime
+from datetime import datetime, timedelta
 from passlib.context import CryptContext
+import os
+from dotenv import load_dotenv
+import jwt  # pyjwt
+
+load_dotenv()  # Loads variables from .env
 
 router = APIRouter()
 
@@ -20,6 +25,17 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if SECRET_KEY is None:
+    raise ValueError("JWT_SECRET_KEY environment variable is not set.")
+
+
+def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1)):
+    to_encode = data.copy()
+    to_encode.update({"exp": datetime.now() + expires_delta})
+    return jwt.encode(to_encode, str(SECRET_KEY), algorithm="HS256")
 
 
 @router.post("/ask")
@@ -148,9 +164,18 @@ async def login_user(body: UserLogin):
             return {"error": "User not found.", "status": status.HTTP_404_NOT_FOUND}
         else:
             if verify_password(body.password, user.password):
+                access_token = create_access_token(
+                    {"sub": user.username, "user_id": user.id}
+                )
                 return {
                     "message": "Login successful.",
+                    "access_token": access_token,
                     "status": status.HTTP_200_OK,
+                    "user": {
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                        "username": user.username,
+                    },
                 }
             else:
                 return {
