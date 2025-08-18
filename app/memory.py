@@ -5,7 +5,8 @@ from langchain.memory import ConversationBufferMemory
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-from models_db import ChatHistory
+from models_db import User, ChatHistory
+from fastapi import status
 
 load_dotenv()
 
@@ -34,9 +35,7 @@ def load_memory(user_id: int) -> ConversationBufferMemory:
     )
 
 
-def history_to_db(
-    user_id, user_message, ai_message, timestamp, ai_sender_label="assistant"
-):
+def history_to_db(user_id, user_message, ai_message, timestamp):
     session = SessionLocal()
     try:
         session.add_all(
@@ -50,15 +49,48 @@ def history_to_db(
                 ChatHistory(
                     user_id=user_id,
                     message=ai_message,
-                    sender=ai_sender_label,
+                    sender="assistant",
                     timestamp=timestamp,
                 ),
             ]
         )
         session.commit()
-        print("Chat history committed successfully")
+        return {
+            "message": "Chat history committed successfully",
+            "status": status.HTTP_201_CREATED,
+        }
     except Exception as e:
         session.rollback()
-        print("Failed to save chat history:", e)
+        return {
+            "error": f"Failed to save chat history: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+    finally:
+        session.close()
+
+
+def newUser_to_db(username, password, first_name, last_name, email, location):
+    session = SessionLocal()
+    try:
+        new_user = User(
+            username=username,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            location=location,
+        )
+        session.add(new_user)
+        session.commit()
+        return {
+            "message": "New user created successfully",
+            "status": status.HTTP_201_CREATED,
+        }
+    except Exception as e:
+        session.rollback()
+        return {
+            "error": f"Failed to create new user: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
     finally:
         session.close()

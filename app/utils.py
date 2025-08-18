@@ -1,6 +1,7 @@
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain.tools import Tool
 from datetime import datetime
+from fastapi import status
 
 
 def save_to_txt(data: str, filename: str = "history.txt"):
@@ -12,7 +13,10 @@ def save_to_txt(data: str, filename: str = "history.txt"):
     with open(filename, "a", encoding="utf-8") as f:
         f.write(formatted_text)
 
-    return "Data successfully saved to {}".format(filename)
+    return {
+        "message": f"Data successfully saved to {filename}",
+        "status": status.HTTP_200_OK,
+    }
 
 
 def save_to_cache(text: str, filename="latest_response.txt"):
