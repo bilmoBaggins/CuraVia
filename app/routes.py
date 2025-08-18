@@ -9,7 +9,6 @@ from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
 import jwt  # pyjwt
-from typing import cast
 
 load_dotenv()  # Loads variables from .env
 
@@ -176,7 +175,7 @@ async def login_user(body: UserLogin):
                         "first_name": user.first_name,
                         "last_name": user.last_name,
                         "username": user.username,
-                    }
+                    },
                 }
             else:
                 return {
