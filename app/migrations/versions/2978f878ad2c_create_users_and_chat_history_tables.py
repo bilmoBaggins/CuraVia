@@ -30,7 +30,7 @@ def upgrade() -> None:
         sa.Column("first_name", sa.String(length=255), nullable=True),
         sa.Column("last_name", sa.String(length=255), nullable=True),
         sa.Column("email", sa.String(length=255), nullable=False),
-        sa.Column("location", sa.String(length=255), nullable=False),
+        sa.Column("location", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(),
