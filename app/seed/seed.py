@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, Integer, String, Text, Enum, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from dotenv import load_dotenv
+from fastapi import status
 
 load_dotenv()
 
@@ -25,7 +26,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(String(100), unique=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True)
     password: Mapped[str] = mapped_column(String(255))
     first_name: Mapped[str] = mapped_column(String(100))
     last_name: Mapped[str] = mapped_column(String(100))
@@ -87,7 +88,10 @@ def seed() -> None:
     session.add_all(chats)
     session.commit()
     session.close()
-    print("Seeding complete!")
+    return{
+        "message": "Seeding complete!",
+        "status": status.HTTP_201_CREATED
+    }
 
 
 if __name__ == "__main__":
