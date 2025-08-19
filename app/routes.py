@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
-import jwt  # pyjwt
+import jwt  # type: ignore
 
 load_dotenv()  # Loads variables from .env
 
