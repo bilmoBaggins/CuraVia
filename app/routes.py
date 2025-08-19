@@ -172,6 +172,7 @@ async def login_user(body: UserLogin):
                     "access_token": access_token,
                     "status": status.HTTP_200_OK,
                     "user": {
+                        "user_id": user.id,
                         "first_name": user.first_name,
                         "last_name": user.last_name,
                         "username": user.username,
