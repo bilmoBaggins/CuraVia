@@ -38,6 +38,7 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1
     return jwt.encode(to_encode, str(SECRET_KEY), algorithm="HS256")
 
 
+
 @router.post("/ask")
 async def ask_question(body: QueryModel):
     memory = load_memory(body.user_id)
@@ -89,31 +90,32 @@ async def ask_question(body: QueryModel):
     except Exception as e:
         formatted_output = f"Error parsing response {e}\nRaw response: {raw_response}"
 
-    # Attempt to save to DB, always run regardless of above errors
-    try:
-        history_to_db(body.user_id, body.query, formatted_output, datetime.now())
-    except Exception as e:
-        return {
-            "error": f"Failed to save chat history: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
+    # Only save history if user_id is not 0 (guest)
+    if body.user_id != 0:
+        try:
+            history_to_db(body.user_id, body.query, formatted_output, datetime.now())
+        except Exception as e:
+            return {
+                "error": f"Failed to save chat history: {e}",
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
 
-    # Optional: still try saving to text/cache but don't block DB insert
-    try:
-        save_to_txt(formatted_output)
-    except Exception as e:
-        return {
-            "error": f"Failed to save response to text file: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
+        # Optional: still try saving to text/cache but don't block DB insert
+        try:
+            save_to_txt(formatted_output)
+        except Exception as e:
+            return {
+                "error": f"Failed to save response to text file: {e}",
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
 
-    try:
-        save_to_cache(formatted_output)
-    except Exception as e:
-        return {
-            "error": f"Failed to save response to cache: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
+        try:
+            save_to_cache(formatted_output)
+        except Exception as e:
+            return {
+                "error": f"Failed to save response to cache: {e}",
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
 
     return {"message": formatted_output, "status": status.HTTP_200_OK}
 
