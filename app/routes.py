@@ -1,7 +1,13 @@
 from fastapi import APIRouter, status
 from models import QueryModel, UserCreate, UserLogin
 from models_db import User
-from memory import SessionLocal, load_memory, history_to_db, newUser_to_db, clear_guest_memory
+from memory import (
+    SessionLocal,
+    load_memory,
+    history_to_db,
+    newUser_to_db,
+    clear_guest_memory,
+)
 from agent import create_agent, format_memory_to_string
 from utils import save_to_txt, save_to_cache
 from datetime import datetime, timedelta
@@ -38,8 +44,7 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1
     return jwt.encode(to_encode, str(SECRET_KEY), algorithm="HS256")
 
 
-
-
+@router.post("/ask")
 @router.post("/ask")
 async def ask_question(body: QueryModel):
     if body.user_id == 0:

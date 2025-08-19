@@ -1,6 +1,3 @@
-def clear_guest_memory():
-    session_key = f"message_store:0"
-    redis_client.delete(session_key)
 import os
 import redis
 from langchain_community.chat_message_histories import RedisChatMessageHistory
@@ -10,6 +7,12 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from models_db import User, ChatHistory
 from fastapi import status
+
+
+def clear_guest_memory():
+    session_key = f"message_store:{0}"
+    redis_client.delete(session_key)
+
 
 load_dotenv()
 
