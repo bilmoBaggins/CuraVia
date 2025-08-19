@@ -82,10 +82,7 @@ def newUser_to_db(username, password, first_name, last_name, email, location):
         )
         session.add(new_user)
         session.commit()
-        return {
-            "message": "New user created successfully",
-            "status": status.HTTP_201_CREATED,
-        }
+
     except Exception as e:
         session.rollback()
         return {
@@ -94,3 +91,7 @@ def newUser_to_db(username, password, first_name, last_name, email, location):
         }
     finally:
         session.close()
+        return {
+            "message": "New user created successfully",
+            "status": status.HTTP_201_CREATED,
+        }
