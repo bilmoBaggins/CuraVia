@@ -20,10 +20,10 @@ class QueryModel(BaseModel):
 class UserCreate(BaseModel):
     username: str
     password: str
-    first_name: str
-    last_name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     email: str
-    location: Optional[str] = None 
+    location: Optional[str] = None
 
 
 class UserLogin(BaseModel):
