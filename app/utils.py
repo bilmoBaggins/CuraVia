@@ -14,12 +14,13 @@ from urllib.parse import quote
 load_dotenv()  # Loads variables from .env
 
 
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT"))
-SMTP_USER = os.getenv("SMTP_USER")  # your email
-SMTP_PASS = os.getenv("SMTP_PASS")  # app password if Gmail
+SMTP_SERVER = os.getenv("SMTP_SERVER") or ""
+SMTP_PORT = int(os.getenv("SMTP_PORT") or "587")
+SMTP_USER = os.getenv("SMTP_USER") or ""  # your email
+SMTP_PASS = os.getenv("SMTP_PASS") or ""  # app password if Gmail
 
-FRONTEND_URL = os.getenv("FRONTEND_URL")
+FRONTEND_URL = os.getenv("FRONTEND_URL") or ""
+
 
 def save_to_txt(data: str, filename: str = "history.txt"):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -54,8 +55,8 @@ search_tool = Tool(
     description="Search the web for information.",
 )
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if SECRET_KEY is None:
+SECRET_KEY = os.getenv("JWT_SECRET_KEY") or ""
+if not SECRET_KEY:
     raise ValueError("JWT_SECRET_KEY environment variable not set")
 
 
@@ -68,7 +69,7 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1
 def create_verification_token(email: str):
     payload = {
         "sub": email,
-        "exp": datetime.now() + timedelta(hours=1)  # 1 hour expiry
+        "exp": datetime.now() + timedelta(hours=1),  # 1 hour expiry
     }
     return jwt.encode(payload, str(SECRET_KEY), algorithm="HS256")
 
@@ -108,12 +109,12 @@ def send_verification_email(to_email: str, token: str):
             server.starttls()
             server.login(SMTP_USER, SMTP_PASS)
             server.sendmail(SMTP_USER, to_email, message.as_string())
-        return{
+        return {
             "message": "Verification email sent successfully.",
             "status": status.HTTP_200_OK,
         }
     except Exception as e:
-        return{
+        return {
             "error": f"Failed to send verification email. {e}",
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }

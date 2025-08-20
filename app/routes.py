@@ -1,11 +1,18 @@
-import jwt # type: ignore
+import jwt  # type: ignore
 from fastapi import APIRouter, status
 from models import QueryModel, UserCreate, UserLogin, ResendVerificationRequest
 from models_db import User
 from memory import load_memory, history_to_db, newUser_to_db
 from agent import create_agent, format_memory_to_string
 from database import SessionLocal
-from utils import save_to_txt, save_to_cache, SECRET_KEY, create_access_token, create_verification_token, send_verification_email
+from utils import (
+    save_to_txt,
+    save_to_cache,
+    SECRET_KEY,
+    create_access_token,
+    create_verification_token,
+    send_verification_email,
+)
 from datetime import datetime
 from passlib.context import CryptContext
 
@@ -135,7 +142,8 @@ async def signup_user(body: UserCreate):
         send_verification_email(body.email, token)
 
         return {
-            "message": "User created successfully. Please check your email to verify your account.",
+            "message": "User created successfully. "
+            "Please check your email to verify your account.",
             "status": status.HTTP_201_CREATED,
         }
     except Exception as e:
@@ -185,13 +193,13 @@ async def login_user(body: UserLogin):
 async def verify_email(token: str):
     session = SessionLocal()
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms="HS256")
+        payload = jwt.decode(token, str(SECRET_KEY), algorithms="HS256")
         email = payload["sub"]
 
         # Find user and mark verified
         user = session.query(User).filter(User.email == email).first()
         if not user:
-            return{
+            return {
                 "error": "User not found.",
                 "status": status.HTTP_404_NOT_FOUND,
             }
@@ -204,12 +212,12 @@ async def verify_email(token: str):
         }
 
     except jwt.ExpiredSignatureError:
-        return{
+        return {
             "error": "Verification link expired.",
             "status": status.HTTP_400_BAD_REQUEST,
         }
     except jwt.InvalidTokenError:
-        return{
+        return {
             "error": "Invalid verification token.",
             "status": status.HTTP_400_BAD_REQUEST,
         }

@@ -27,7 +27,9 @@ class User(Base):
     last_name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(255), unique=True)
     location: Mapped[str] = mapped_column(String(255), nullable=True)
-    is_verified: Mapped[bool] = mapped_column(default=False, nullable=False, server_default='0')
+    is_verified: Mapped[bool] = mapped_column(
+        default=False, nullable=False, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
 
 
