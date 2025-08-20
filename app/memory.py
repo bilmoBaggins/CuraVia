@@ -1,27 +1,11 @@
-import os
-import redis
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain.memory import ConversationBufferMemory
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from models_db import User, ChatHistory
 from fastapi import status
+from database import SessionLocal, redis_client, REDIS_URL, REDIS_EXPIRATION_SECONDS
 
 load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL is None:
-    raise ValueError("DATABASE_URL not set! Check your .env file.")
-
-# Engine & session
-engine = create_engine(DATABASE_URL, echo=True)
-SessionLocal = sessionmaker(bind=engine)
-
-# Redis settings
-REDIS_URL = os.getenv("REDIS_URL", "")
-REDIS_EXPIRATION_SECONDS = int(os.getenv("REDIS_EXPIRATION_SECONDS", 24 * 3600))
-redis_client = redis.Redis.from_url(REDIS_URL)
 
 
 def load_memory(user_id: int) -> ConversationBufferMemory:

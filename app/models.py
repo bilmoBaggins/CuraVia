@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 
@@ -22,10 +22,15 @@ class UserCreate(BaseModel):
     password: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    email: str
+    email: EmailStr
     location: Optional[str] = None
+    is_verified: bool = False
 
 
 class UserLogin(BaseModel):
     username: str
     password: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
