@@ -24,7 +24,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL") or ""
 
 def save_to_txt(data: str, filename: str = "history.txt"):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    formatted_text = ("--- Research Output ---\n" "Timestamp: {}\n\n{}\n\n").format(
+    formatted_text = ("--- Model Output ---\n" "Timestamp: {}\n\n{}\n\n").format(
         timestamp, data
     )
 
@@ -40,12 +40,16 @@ def save_to_txt(data: str, filename: str = "history.txt"):
 def save_to_cache(text: str, filename="latest_response.txt"):
     with open(filename, "w", encoding="utf-8") as f:
         f.write(text)
+    return {
+        "message": f"Data successfully saved to {filename}",
+        "status": status.HTTP_200_OK,
+    }
 
 
 save_tool = Tool(
     name="save_text_to_file",
     func=save_to_txt,
-    description="Saves structured research data to a text file.",
+    description="Saves structured data to a text file.",
 )
 
 search = DuckDuckGoSearchRun()

@@ -25,101 +25,6 @@ from passlib.context import CryptContext
 
 router = APIRouter()
 
-# --- Conversation and Message Endpoints ---
-
-
-@router.get("/conversations")
-async def get_conversations(user_id: int):
-    session = SessionLocal()
-    try:
-        # Get all unique conversations for this user only
-        convo_ids = (
-            session.query(ChatHistory.convo_id)
-            .filter(ChatHistory.user_id == user_id)
-            .distinct()
-            .all()
-        )
-        conversations = []
-        from agent import ChatOpenAI
-
-        llm = ChatOpenAI(model="gpt-4o-mini")
-        for (convo_id,) in convo_ids:
-            msgs = (
-                session.query(ChatHistory)
-                .filter(
-                    ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id
-                )
-                .order_by(ChatHistory.timestamp)
-                .all()
-            )
-            # Build a summary prompt from all user and assistant messages
-            history = "\n".join([f"{m.sender}: {m.message}" for m in msgs])
-            title = None
-            if history:
-                try:
-                    ai_prompt = (
-                        "Summarize this chat in 5-7 words for a chat title. "
-                        "Be concise, relevant, and use natural language.\n" + history
-                    )
-                    ai_response = llm.invoke(ai_prompt)
-                    title = ai_response.strip()
-                except Exception:
-                    pass
-            if not title:
-                if msgs:
-                    title = msgs[0].message[:30]
-                else:
-                    title = f"Chat {convo_id}"
-            conversations.append({"id": convo_id, "title": title})
-        return conversations
-    finally:
-        session.close()
-
-
-@router.post("/conversations")
-async def create_conversation(body: ConversationCreate):
-    user_id = body.user_id
-    title = body.title
-    session = SessionLocal()
-    try:
-        # Find max convo_id for user, increment
-        max_convo = (
-            session.query(ChatHistory.convo_id)
-            .filter(ChatHistory.user_id == user_id)
-            .order_by(desc(ChatHistory.convo_id))
-            .first()
-        )
-        new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
-        return {"id": new_convo_id, "title": title}
-    finally:
-        session.close()
-
-
-@router.delete("/conversations/{convo_id}")
-async def delete_conversation(convo_id: int):
-    # Do not delete chat history from the database. Only acknowledge the request.
-    return {"message": "Conversation closed (history retained)"}
-
-
-@router.get("/messages")
-async def get_messages(conversation_id: int, user_id: int):
-    session = SessionLocal()
-    try:
-        messages = (
-            session.query(ChatHistory)
-            .filter(
-                ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id
-            )
-            .order_by(ChatHistory.timestamp)
-            .all()
-        )
-        return [
-            {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
-            for m in messages
-        ]
-    finally:
-        session.close()
-
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -133,7 +38,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-@router.post("/ask")
+@router.post("/api/ask")
 async def ask_question(body: QueryModel):
 
     # Greeting detection
@@ -239,7 +144,7 @@ async def ask_question(body: QueryModel):
     return {"message": formatted_output, "status": status.HTTP_200_OK}
 
 
-@router.post("/signup")
+@router.post("/api/signup")
 async def signup_user(body: UserCreate):
     session = SessionLocal()
     try:
@@ -281,7 +186,7 @@ async def signup_user(body: UserCreate):
         }
 
 
-@router.post("/login")
+@router.post("/api/login")
 async def login_user(body: UserLogin):
     session = SessionLocal()
     try:
@@ -317,7 +222,7 @@ async def login_user(body: UserLogin):
         }
 
 
-@router.get("/verify")
+@router.get("/api/verify")
 async def verify_email(token: str):
     session = SessionLocal()
     try:
@@ -351,7 +256,7 @@ async def verify_email(token: str):
         }
 
 
-@router.post("/resend-verification")
+@router.post("/api/resend-verification")
 async def resend_verification(body: ResendVerificationRequest):
     session = SessionLocal()
     try:
@@ -380,3 +285,109 @@ async def resend_verification(body: ResendVerificationRequest):
             "error": f"Failed to resend verification email: {e}",
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
+
+
+@router.get("/api/conversations")
+async def get_conversations(user_id: int):
+    session = SessionLocal()
+    try:
+        # Get all unique conversations for this user only
+        convo_ids = (
+            session.query(ChatHistory.convo_id)
+            .filter(ChatHistory.user_id == user_id)
+            .distinct()
+            .all()
+        )
+        conversations = []
+        from agent import ChatOpenAI
+
+        llm = ChatOpenAI(model="gpt-4o-mini")
+        for (convo_id,) in convo_ids:
+            msgs = (
+                session.query(ChatHistory)
+                .filter(
+                    ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id
+                )
+                .order_by(ChatHistory.timestamp)
+                .all()
+            )
+            # Build a summary prompt from all user and assistant messages
+            history = "\n".join([f"{m.sender}: {m.message}" for m in msgs])
+            title = None
+            if history:
+                try:
+                    ai_prompt = (
+                        "Summarize this chat in 5-7 words for a chat title. "
+                        "Be concise, relevant, and use natural language.\n" + history
+                    )
+                    ai_response = llm.invoke(ai_prompt)
+                    title = ai_response.strip()
+                except Exception:
+                    pass
+            if not title:
+                if msgs:
+                    title = msgs[0].message[:30]
+                else:
+                    title = f"Chat {convo_id}"
+            conversations.append({"id": convo_id, "title": title})
+        return {
+            "message": conversations,
+            "status": status.HTTP_200_OK,
+        }
+    finally:
+        session.close()
+
+
+@router.post("/api/conversations")
+async def create_conversation(body: ConversationCreate):
+    user_id = body.user_id
+    title = body.title
+    session = SessionLocal()
+    try:
+        # Find max convo_id for user, increment
+        max_convo = (
+            session.query(ChatHistory.convo_id)
+            .filter(ChatHistory.user_id == user_id)
+            .order_by(desc(ChatHistory.convo_id))
+            .first()
+        )
+        new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
+        return {
+            "id": new_convo_id,
+            "title": title,
+            "status": status.HTTP_201_CREATED,
+        }
+    finally:
+        session.close()
+
+
+@router.delete("/api/conversations/{convo_id}")
+async def delete_conversation(convo_id: int):
+    # Do not delete chat history from the database. Only acknowledge the request.
+    return {
+        "message": "Conversation closed (history retained)",
+        "status": status.HTTP_200_OK,
+    }
+
+
+@router.get("/api/messages")
+async def get_messages(conversation_id: int, user_id: int):
+    session = SessionLocal()
+    try:
+        messages = (
+            session.query(ChatHistory)
+            .filter(
+                ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id
+            )
+            .order_by(ChatHistory.timestamp)
+            .all()
+        )
+        return {
+            "message": [
+                {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
+                for m in messages
+            ],
+            "status": status.HTTP_200_OK,
+        }
+    finally:
+        session.close()
