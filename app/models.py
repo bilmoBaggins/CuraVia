@@ -15,6 +15,7 @@ class ResearchResponse(BaseModel):
 class QueryModel(BaseModel):
     query: str
     user_id: int
+    convo_id: int | None = None
 
 
 class UserCreate(BaseModel):
@@ -34,3 +35,9 @@ class UserLogin(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
+
+
+# Model for creating a conversation
+class ConversationCreate(BaseModel):
+    user_id: int
+    title: str
