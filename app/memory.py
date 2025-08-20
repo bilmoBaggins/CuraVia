@@ -5,6 +5,12 @@ from models_db import User, ChatHistory
 from fastapi import status
 from database import SessionLocal, redis_client, REDIS_URL, REDIS_EXPIRATION_SECONDS
 
+
+def clear_guest_memory():
+    session_key = f"message_store:{0}"
+    redis_client.delete(session_key)
+
+
 load_dotenv()
 
 

@@ -2,7 +2,7 @@ import jwt  # type: ignore
 from fastapi import APIRouter, status
 from models import QueryModel, UserCreate, UserLogin, ResendVerificationRequest
 from models_db import User
-from memory import load_memory, history_to_db, newUser_to_db
+from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
 from agent import create_agent, format_memory_to_string
 from database import SessionLocal
 from utils import (
@@ -44,6 +44,8 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1
 
 @router.post("/ask")
 async def ask_question(body: QueryModel):
+    if body.user_id == 0:
+        clear_guest_memory()
     memory = load_memory(body.user_id)
     agent_executor, parser = create_agent(memory)
 

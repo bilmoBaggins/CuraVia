@@ -14,7 +14,7 @@ class ResearchResponse(BaseModel):
 
 class QueryModel(BaseModel):
     query: str
-    user_id: int 
+    user_id: int
 
 
 class UserCreate(BaseModel):
