@@ -8,6 +8,12 @@ from dotenv import load_dotenv
 from models_db import User, ChatHistory
 from fastapi import status
 
+
+def clear_guest_memory():
+    session_key = f"message_store:{0}"
+    redis_client.delete(session_key)
+
+
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
