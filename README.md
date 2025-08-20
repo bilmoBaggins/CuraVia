@@ -72,16 +72,12 @@ pip install black flake8 mypy
 
 To check for formatting errors
 ```sh
-black --check
-flake8 --check
-mypy --check
+black --check; flake8 --check; mypy --check
 ```
 
 To fix formatting errors
 ```sh
-flake8 .
-black .
-mypy .
+flake8 .; black .; mypy .
 ```
 
 #

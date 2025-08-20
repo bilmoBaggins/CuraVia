@@ -40,16 +40,36 @@ async def get_conversations(user_id: int):
             .all()
         )
         conversations = []
+        from agent import ChatOpenAI
+
+        llm = ChatOpenAI(model="gpt-4o-mini")
         for (convo_id,) in convo_ids:
-            latest = (
+            msgs = (
                 session.query(ChatHistory)
                 .filter(
                     ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id
                 )
-                .order_by(desc(ChatHistory.timestamp))
-                .first()
+                .order_by(ChatHistory.timestamp)
+                .all()
             )
-            title = latest.message[:30] if latest else f"Chat {convo_id}"
+            # Build a summary prompt from all user and assistant messages
+            history = "\n".join([f"{m.sender}: {m.message}" for m in msgs])
+            title = None
+            if history:
+                try:
+                    ai_prompt = (
+                        "Summarize this chat in 5-7 words for a chat title. "
+                        "Be concise, relevant, and use natural language.\n" + history
+                    )
+                    ai_response = llm.invoke(ai_prompt)
+                    title = ai_response.strip()
+                except Exception:
+                    pass
+            if not title:
+                if msgs:
+                    title = msgs[0].message[:30]
+                else:
+                    title = f"Chat {convo_id}"
             conversations.append({"id": convo_id, "title": title})
         return conversations
     finally:
@@ -77,13 +97,8 @@ async def create_conversation(body: ConversationCreate):
 
 @router.delete("/conversations/{convo_id}")
 async def delete_conversation(convo_id: int):
-    session = SessionLocal()
-    try:
-        session.query(ChatHistory).filter(ChatHistory.convo_id == convo_id).delete()
-        session.commit()
-        return {"message": "Conversation deleted"}
-    finally:
-        session.close()
+    # Do not delete chat history from the database. Only acknowledge the request.
+    return {"message": "Conversation closed (history retained)"}
 
 
 @router.get("/messages")
@@ -120,6 +135,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 @router.post("/ask")
 async def ask_question(body: QueryModel):
+
+    # Greeting detection
+    greetings = [
+        "hi",
+        "hello",
+        "hey",
+        "greetings",
+        "good morning",
+        "good afternoon",
+        "good evening",
+    ]
+    if any(greet in body.query.lower() for greet in greetings):
+        return {
+            "message": "Hello! I'm CuraVia, your assistant. How can I help you today?",
+            "status": status.HTTP_200_OK,
+        }
+
     if body.user_id == 0:
         clear_guest_memory()
     memory = load_memory(body.user_id)
