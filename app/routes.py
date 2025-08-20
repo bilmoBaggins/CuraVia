@@ -31,17 +31,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if SECRET_KEY is None:
-    raise ValueError("JWT_SECRET_KEY environment variable is not set.")
-
-
-def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1)):
-    to_encode = data.copy()
-    to_encode.update({"exp": datetime.now() + expires_delta})
-    return jwt.encode(to_encode, str(SECRET_KEY), algorithm="HS256")
-
-
 @router.post("/ask")
 async def ask_question(body: QueryModel):
     if body.user_id == 0:
