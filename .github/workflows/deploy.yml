@@ -1,0 +1,43 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /root/CuraVia-backend/app
+            git pull
+            docker-compose build --no-cache
+            docker-compose up -d
+            docker compose run --rm fastapi alembic upgrade head
+      - name: Create .env file
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> app/.env
+          echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> app/.env
+          echo "REDIS_EXPIRATION_SECONDS=${{ secrets.REDIS_EXPIRATION_SECONDS }}" >> app/.env
+          echo "MYSQL_HOST=${{ secrets.MYSQL_HOST }}" >> app/.env
+          echo "MYSQL_PORT=${{ secrets.MYSQL_PORT }}" >> app/.env
+          echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> app/.env
+          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> app/.env
+          echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> app/.env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> app/.env
+          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> app/.env
+          echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> app/.env
+          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> app/.env
+          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> app/.env
+          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> app/.env
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> app/.env
