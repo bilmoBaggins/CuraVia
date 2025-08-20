@@ -70,15 +70,6 @@ async def create_conversation(body: ConversationCreate):
             .first()
         )
         new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
-        # Add a dummy message to start the conversation
-        chat = ChatHistory(
-            convo_id=new_convo_id,
-            user_id=user_id,
-            message=title,
-            sender="user",
-        )
-        session.add(chat)
-        session.commit()
         return {"id": new_convo_id, "title": title}
     finally:
         session.close()
