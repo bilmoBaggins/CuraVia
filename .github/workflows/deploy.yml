@@ -21,23 +21,22 @@ jobs:
           script: |
             cd /root/CuraVia-backend/app
             git pull
+            # Create .env file with all required secrets
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
+            echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
+            echo "REDIS_EXPIRATION_SECONDS=${{ secrets.REDIS_EXPIRATION_SECONDS }}" >> .env
+            echo "MYSQL_HOST=${{ secrets.MYSQL_HOST }}" >> .env
+            echo "MYSQL_PORT=${{ secrets.MYSQL_PORT }}" >> .env
+            echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .env
+            echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .env
+            echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> .env
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+            echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
+            echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> .env
+            echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+            echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+            echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
+            echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
             docker-compose build --no-cache
             docker-compose up -d
             docker compose run --rm fastapi alembic upgrade head
-      - name: Create .env file
-        run: |
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> app/.env
-          echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> app/.env
-          echo "REDIS_EXPIRATION_SECONDS=${{ secrets.REDIS_EXPIRATION_SECONDS }}" >> app/.env
-          echo "MYSQL_HOST=${{ secrets.MYSQL_HOST }}" >> app/.env
-          echo "MYSQL_PORT=${{ secrets.MYSQL_PORT }}" >> app/.env
-          echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> app/.env
-          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> app/.env
-          echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> app/.env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> app/.env
-          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> app/.env
-          echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> app/.env
-          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> app/.env
-          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> app/.env
-          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> app/.env
-          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> app/.env
