@@ -1,20 +1,12 @@
-from pydantic import BaseModel
-# --- Conversation and Message Endpoints ---
-
-# Model for creating a conversation
-class ConversationCreate(BaseModel):
-    user_id: int
-    title: str
 import jwt  # type: ignore
 from fastapi import APIRouter, status
-from models import UserCreate, UserLogin, ResendVerificationRequest
-
-# QueryModel with convo_id for /ask
-class QueryModel(BaseModel):
-    query: str
-    user_id: int
-    convo_id: int | None = None
-from models_db import User
+from models import (
+    UserCreate,
+    UserLogin,
+    ResendVerificationRequest,
+    ConversationCreate,
+    QueryModel,
+)
 from models_db import User, ChatHistory
 from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
 from agent import create_agent, format_memory_to_string
@@ -35,6 +27,7 @@ router = APIRouter()
 
 # --- Conversation and Message Endpoints ---
 
+
 @router.get("/conversations")
 async def get_conversations(user_id: int):
     session = SessionLocal()
@@ -50,7 +43,9 @@ async def get_conversations(user_id: int):
         for (convo_id,) in convo_ids:
             latest = (
                 session.query(ChatHistory)
-                .filter(ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id)
+                .filter(
+                    ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id
+                )
                 .order_by(desc(ChatHistory.timestamp))
                 .first()
             )
@@ -59,6 +54,7 @@ async def get_conversations(user_id: int):
         return conversations
     finally:
         session.close()
+
 
 @router.post("/conversations")
 async def create_conversation(body: ConversationCreate):
@@ -87,6 +83,7 @@ async def create_conversation(body: ConversationCreate):
     finally:
         session.close()
 
+
 @router.delete("/conversations/{convo_id}")
 async def delete_conversation(convo_id: int):
     session = SessionLocal()
@@ -97,13 +94,16 @@ async def delete_conversation(convo_id: int):
     finally:
         session.close()
 
+
 @router.get("/messages")
 async def get_messages(conversation_id: int, user_id: int):
     session = SessionLocal()
     try:
         messages = (
             session.query(ChatHistory)
-            .filter(ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id)
+            .filter(
+                ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id
+            )
             .order_by(ChatHistory.timestamp)
             .all()
         )
@@ -183,7 +183,13 @@ async def ask_question(body: QueryModel):
     # Only save history if user_id is not 0 (guest)
     if body.user_id != 0 and body.convo_id:
         try:
-            history_to_db(body.user_id, body.convo_id, body.query, formatted_output, datetime.now())
+            history_to_db(
+                body.user_id,
+                body.convo_id,
+                body.query,
+                formatted_output,
+                datetime.now(),
+            )
         except Exception as e:
             return {
                 "error": f"Failed to save chat history: {e}",
