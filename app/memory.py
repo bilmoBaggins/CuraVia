@@ -25,19 +25,21 @@ def load_memory(user_id: int) -> ConversationBufferMemory:
     )
 
 
-def history_to_db(user_id, user_message, ai_message, timestamp):
+def history_to_db(user_id, convo_id, user_message, ai_message, timestamp):
     session = SessionLocal()
     try:
         session.add_all(
             [
                 ChatHistory(
                     user_id=user_id,
+                    convo_id=convo_id,
                     message=user_message,
                     sender="user",
                     timestamp=timestamp,
                 ),
                 ChatHistory(
                     user_id=user_id,
+                    convo_id=convo_id,
                     message=ai_message,
                     sender="assistant",
                     timestamp=timestamp,

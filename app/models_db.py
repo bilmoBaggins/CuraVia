@@ -38,6 +38,7 @@ class ChatHistory(Base):
     __tablename__ = "chat_history"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    convo_id: Mapped[int] = mapped_column(Integer, nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     message: Mapped[str] = mapped_column(Text)
     sender: Mapped[SenderEnum] = mapped_column(Enum(SenderEnum))

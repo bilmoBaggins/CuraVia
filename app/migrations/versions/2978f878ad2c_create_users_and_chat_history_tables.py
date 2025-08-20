@@ -45,6 +45,7 @@ def upgrade() -> None:
     op.create_table(
         "chat_history",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("convo_id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("message", sa.Text(length=10000), nullable=False),
         sa.Column(

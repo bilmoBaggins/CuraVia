@@ -1,10 +1,25 @@
+from pydantic import BaseModel
+# --- Conversation and Message Endpoints ---
+
+# Model for creating a conversation
+class ConversationCreate(BaseModel):
+    user_id: int
+    title: str
 import jwt  # type: ignore
 from fastapi import APIRouter, status
-from models import QueryModel, UserCreate, UserLogin, ResendVerificationRequest
+from models import UserCreate, UserLogin, ResendVerificationRequest
+
+# QueryModel with convo_id for /ask
+class QueryModel(BaseModel):
+    query: str
+    user_id: int
+    convo_id: int | None = None
 from models_db import User
+from models_db import User, ChatHistory
 from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
 from agent import create_agent, format_memory_to_string
 from database import SessionLocal
+from sqlalchemy import desc
 from utils import (
     save_to_txt,
     save_to_cache,
@@ -17,6 +32,87 @@ from datetime import datetime
 from passlib.context import CryptContext
 
 router = APIRouter()
+
+# --- Conversation and Message Endpoints ---
+
+@router.get("/conversations")
+async def get_conversations(user_id: int):
+    session = SessionLocal()
+    try:
+        # Get all unique conversations for this user only
+        convo_ids = (
+            session.query(ChatHistory.convo_id)
+            .filter(ChatHistory.user_id == user_id)
+            .distinct()
+            .all()
+        )
+        conversations = []
+        for (convo_id,) in convo_ids:
+            latest = (
+                session.query(ChatHistory)
+                .filter(ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id)
+                .order_by(desc(ChatHistory.timestamp))
+                .first()
+            )
+            title = latest.message[:30] if latest else f"Chat {convo_id}"
+            conversations.append({"id": convo_id, "title": title})
+        return conversations
+    finally:
+        session.close()
+
+@router.post("/conversations")
+async def create_conversation(body: ConversationCreate):
+    user_id = body.user_id
+    title = body.title
+    session = SessionLocal()
+    try:
+        # Find max convo_id for user, increment
+        max_convo = (
+            session.query(ChatHistory.convo_id)
+            .filter(ChatHistory.user_id == user_id)
+            .order_by(desc(ChatHistory.convo_id))
+            .first()
+        )
+        new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
+        # Add a dummy message to start the conversation
+        chat = ChatHistory(
+            convo_id=new_convo_id,
+            user_id=user_id,
+            message=title,
+            sender="user",
+        )
+        session.add(chat)
+        session.commit()
+        return {"id": new_convo_id, "title": title}
+    finally:
+        session.close()
+
+@router.delete("/conversations/{convo_id}")
+async def delete_conversation(convo_id: int):
+    session = SessionLocal()
+    try:
+        session.query(ChatHistory).filter(ChatHistory.convo_id == convo_id).delete()
+        session.commit()
+        return {"message": "Conversation deleted"}
+    finally:
+        session.close()
+
+@router.get("/messages")
+async def get_messages(conversation_id: int, user_id: int):
+    session = SessionLocal()
+    try:
+        messages = (
+            session.query(ChatHistory)
+            .filter(ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id)
+            .order_by(ChatHistory.timestamp)
+            .all()
+        )
+        return [
+            {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
+            for m in messages
+        ]
+    finally:
+        session.close()
 
 
 # Password hashing context
@@ -85,9 +181,9 @@ async def ask_question(body: QueryModel):
         formatted_output = f"Error parsing response {e}\nRaw response: {raw_response}"
 
     # Only save history if user_id is not 0 (guest)
-    if body.user_id != 0:
+    if body.user_id != 0 and body.convo_id:
         try:
-            history_to_db(body.user_id, body.query, formatted_output, datetime.now())
+            history_to_db(body.user_id, body.convo_id, body.query, formatted_output, datetime.now())
         except Exception as e:
             return {
                 "error": f"Failed to save chat history: {e}",
