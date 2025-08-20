@@ -1,12 +1,18 @@
 import os
+import redis
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
-MYSQL_PORT = os.getenv("MYSQL_PORT", "3307")
-MYSQL_USER = os.getenv("MYSQL_USER", "my_user")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "my_password")
-MYSQL_DB = os.getenv("MYSQL_DB", "curavia")
 
-DATABASE_URL = (
-    f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@"
-    f"{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL is None:
+    raise ValueError("DATABASE_URL not set! Check your .env file.")
+
+# Engine & session
+engine = create_engine(DATABASE_URL, echo=True)
+SessionLocal = sessionmaker(bind=engine)
+
+# Redis settings
+REDIS_URL = os.getenv("REDIS_URL", "")
+REDIS_EXPIRATION_SECONDS = int(os.getenv("REDIS_EXPIRATION_SECONDS", 24 * 3600))
+redis_client = redis.Redis.from_url(REDIS_URL)

@@ -1,22 +1,20 @@
-from fastapi import APIRouter, status
-from models import QueryModel, UserCreate, UserLogin
-from models_db import User
-from memory import (
-    SessionLocal,
-    load_memory,
-    history_to_db,
-    newUser_to_db,
-    clear_guest_memory,
-)
-from agent import create_agent, format_memory_to_string
-from utils import save_to_txt, save_to_cache
-from datetime import datetime, timedelta
-from passlib.context import CryptContext
-import os
-from dotenv import load_dotenv
 import jwt  # type: ignore
-
-load_dotenv()  # Loads variables from .env
+from fastapi import APIRouter, status
+from models import QueryModel, UserCreate, UserLogin, ResendVerificationRequest
+from models_db import User
+from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
+from agent import create_agent, format_memory_to_string
+from database import SessionLocal
+from utils import (
+    save_to_txt,
+    save_to_cache,
+    SECRET_KEY,
+    create_access_token,
+    create_verification_token,
+    send_verification_email,
+)
+from datetime import datetime
+from passlib.context import CryptContext
 
 router = APIRouter()
 
@@ -33,18 +31,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if SECRET_KEY is None:
-    raise ValueError("JWT_SECRET_KEY environment variable is not set.")
-
-
-def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1)):
-    to_encode = data.copy()
-    to_encode.update({"exp": datetime.now() + expires_delta})
-    return jwt.encode(to_encode, str(SECRET_KEY), algorithm="HS256")
-
-
-@router.post("/ask")
 @router.post("/ask")
 async def ask_question(body: QueryModel):
     if body.user_id == 0:
@@ -154,8 +140,13 @@ async def signup_user(body: UserCreate):
             body.email,
             body.location,
         )
+
+        token = create_verification_token(body.email)
+        send_verification_email(body.email, token)
+
         return {
-            "message": "User created successfully.",
+            "message": "User created successfully. "
+            "Please check your email to verify your account.",
             "status": status.HTTP_201_CREATED,
         }
     except Exception as e:
@@ -179,13 +170,14 @@ async def login_user(body: UserLogin):
                 )
                 return {
                     "message": "Login successful.",
-                    "access_token": access_token,
                     "status": status.HTTP_200_OK,
+                    "access_token": access_token,
                     "user": {
                         "user_id": user.id,
                         "first_name": user.first_name,
                         "last_name": user.last_name,
                         "username": user.username,
+                        "is_verified": user.is_verified,
                     },
                 }
             else:
@@ -196,5 +188,70 @@ async def login_user(body: UserLogin):
     except Exception as e:
         return {
             "error": f"Login failed: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+
+@router.get("/verify")
+async def verify_email(token: str):
+    session = SessionLocal()
+    try:
+        payload = jwt.decode(token, str(SECRET_KEY), algorithms="HS256")
+        email = payload["sub"]
+
+        # Find user and mark verified
+        user = session.query(User).filter(User.email == email).first()
+        if not user:
+            return {
+                "error": "User not found.",
+                "status": status.HTTP_404_NOT_FOUND,
+            }
+
+        user.is_verified = True
+        session.commit()
+        return {
+            "message": f"Email {email} has been verified!",
+            "status": status.HTTP_200_OK,
+        }
+
+    except jwt.ExpiredSignatureError:
+        return {
+            "error": "Verification link expired.",
+            "status": status.HTTP_400_BAD_REQUEST,
+        }
+    except jwt.InvalidTokenError:
+        return {
+            "error": "Invalid verification token.",
+            "status": status.HTTP_400_BAD_REQUEST,
+        }
+
+
+@router.post("/resend-verification")
+async def resend_verification(body: ResendVerificationRequest):
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.email == body.email).first()
+        if not user:
+            return {
+                "error": "User not found.",
+                "status": status.HTTP_404_NOT_FOUND,
+            }
+
+        if user.is_verified:
+            return {
+                "message": "User already verified.",
+                "status": status.HTTP_200_OK,
+            }
+
+        token = create_verification_token(user.email)
+        send_verification_email(user.email, token)
+
+        return {
+            "message": "Verification email resent. Please check your inbox.",
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        return {
+            "error": f"Failed to resend verification email: {e}",
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
