@@ -79,7 +79,6 @@ async def get_conversations(user_id: int):
 @router.post("/conversations")
 async def create_conversation(body: ConversationCreate):
     user_id = body.user_id
-    title = body.title
     session = SessionLocal()
     try:
         # Find max convo_id for user, increment
@@ -90,6 +89,35 @@ async def create_conversation(body: ConversationCreate):
             .first()
         )
         new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
+
+        # Generate title using agent
+        from agent import create_agent, format_memory_to_string
+
+        memory = None
+        try:
+            from memory import load_memory
+
+            memory = load_memory(user_id)
+        except Exception:
+            memory = None
+        agent_executor, parser = create_agent(memory)
+        chat_history_str = format_memory_to_string(memory) if memory else ""
+        # Use a default prompt for new chat title
+        prompt = "Generate a concise 4-5 word title for a new conversation."
+        raw_response = await agent_executor.ainvoke(
+            {"query": prompt, "chat_history": chat_history_str}
+        )
+        title = "Chat"
+        try:
+            output_text = raw_response.get("output") or raw_response.get(
+                "output_text", ""
+            )
+            structured_response = parser.parse(output_text)
+            if hasattr(structured_response, "title") and structured_response.title:
+                title = structured_response.title
+        except Exception:
+            pass
+
         return {"id": new_convo_id, "title": title}
     finally:
         session.close()
