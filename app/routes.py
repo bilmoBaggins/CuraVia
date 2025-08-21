@@ -3,7 +3,6 @@ from fastapi import APIRouter, status
 from models import (
     UserCreate,
     UserLogin,
-    ResendVerificationRequest,
     ConversationCreate,
     QueryModel,
 )
@@ -38,7 +37,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-@router.post("/api/ask")
+@router.post("/ask")
 async def ask_question(body: QueryModel):
 
     # Greeting detection
@@ -144,7 +143,7 @@ async def ask_question(body: QueryModel):
     return {"message": formatted_output, "status": status.HTTP_200_OK}
 
 
-@router.post("/api/signup")
+@router.post("/signup")
 async def signup_user(body: UserCreate):
     session = SessionLocal()
     try:
@@ -186,7 +185,7 @@ async def signup_user(body: UserCreate):
         }
 
 
-@router.post("/api/login")
+@router.post("/login")
 async def login_user(body: UserLogin):
     session = SessionLocal()
     try:
@@ -222,7 +221,7 @@ async def login_user(body: UserLogin):
         }
 
 
-@router.get("/api/verify")
+@router.get("/verify")
 async def verify_email(token: str):
     session = SessionLocal()
     try:
@@ -256,38 +255,7 @@ async def verify_email(token: str):
         }
 
 
-@router.post("/api/resend-verification")
-async def resend_verification(body: ResendVerificationRequest):
-    session = SessionLocal()
-    try:
-        user = session.query(User).filter(User.email == body.email).first()
-        if not user:
-            return {
-                "error": "User not found.",
-                "status": status.HTTP_404_NOT_FOUND,
-            }
-
-        if user.is_verified:
-            return {
-                "message": "User already verified.",
-                "status": status.HTTP_200_OK,
-            }
-
-        token = create_verification_token(user.email)
-        send_verification_email(user.email, token)
-
-        return {
-            "message": "Verification email resent. Please check your inbox.",
-            "status": status.HTTP_200_OK,
-        }
-    except Exception as e:
-        return {
-            "error": f"Failed to resend verification email: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
-
-
-@router.get("/api/conversations")
+@router.get("/conversations")
 async def get_conversations(user_id: int):
     session = SessionLocal()
     try:
@@ -330,18 +298,14 @@ async def get_conversations(user_id: int):
                 else:
                     title = f"Chat {convo_id}"
             conversations.append({"id": convo_id, "title": title})
-        return {
-            "message": conversations,
-            "status": status.HTTP_200_OK,
-        }
+        return conversations
     finally:
         session.close()
 
 
-@router.post("/api/conversations")
+@router.post("/conversations")
 async def create_conversation(body: ConversationCreate):
     user_id = body.user_id
-    title = body.title
     session = SessionLocal()
     try:
         # Find max convo_id for user, increment
@@ -352,25 +316,47 @@ async def create_conversation(body: ConversationCreate):
             .first()
         )
         new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
-        return {
-            "id": new_convo_id,
-            "title": title,
-            "status": status.HTTP_201_CREATED,
-        }
+
+        # Generate title using agent
+        from agent import create_agent, format_memory_to_string
+
+        memory = None
+        try:
+            from memory import load_memory
+
+            memory = load_memory(user_id)
+        except Exception:
+            memory = None
+        agent_executor, parser = create_agent(memory)
+        chat_history_str = format_memory_to_string(memory) if memory else ""
+        # Use a default prompt for new chat title
+        prompt = "Generate a concise 4-5 word title for a new conversation."
+        raw_response = await agent_executor.ainvoke(
+            {"query": prompt, "chat_history": chat_history_str}
+        )
+        title = "Chat"
+        try:
+            output_text = raw_response.get("output") or raw_response.get(
+                "output_text", ""
+            )
+            structured_response = parser.parse(output_text)
+            if hasattr(structured_response, "title") and structured_response.title:
+                title = structured_response.title
+        except Exception:
+            pass
+
+        return {"id": new_convo_id, "title": title}
     finally:
         session.close()
 
 
-@router.delete("/api/conversations/{convo_id}")
+@router.delete("/conversations/{convo_id}")
 async def delete_conversation(convo_id: int):
     # Do not delete chat history from the database. Only acknowledge the request.
-    return {
-        "message": "Conversation closed (history retained)",
-        "status": status.HTTP_200_OK,
-    }
+    return {"message": "Conversation closed (history retained)"}
 
 
-@router.get("/api/messages")
+@router.get("/messages")
 async def get_messages(conversation_id: int, user_id: int):
     session = SessionLocal()
     try:
@@ -382,12 +368,9 @@ async def get_messages(conversation_id: int, user_id: int):
             .order_by(ChatHistory.timestamp)
             .all()
         )
-        return {
-            "message": [
-                {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
-                for m in messages
-            ],
-            "status": status.HTTP_200_OK,
-        }
+        return [
+            {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
+            for m in messages
+        ]
     finally:
         session.close()
