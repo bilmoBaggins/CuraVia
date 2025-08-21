@@ -37,7 +37,7 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - mysql
+      - mysql_service
       - redis
     env_file:
       - .env
