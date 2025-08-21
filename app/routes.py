@@ -25,7 +25,6 @@ from passlib.context import CryptContext
 
 router = APIRouter()
 
-# --- Conversation and Message Endpoints ---
 
 
 @router.get("/conversations")
@@ -147,7 +146,7 @@ async def get_messages(conversation_id: int, user_id: int):
         ]
     finally:
         session.close()
-
+      
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -376,35 +375,4 @@ async def verify_email(token: str):
         return {
             "error": "Invalid verification token.",
             "status": status.HTTP_400_BAD_REQUEST,
-        }
-
-
-@router.post("/resend-verification")
-async def resend_verification(body: ResendVerificationRequest):
-    session = SessionLocal()
-    try:
-        user = session.query(User).filter(User.email == body.email).first()
-        if not user:
-            return {
-                "error": "User not found.",
-                "status": status.HTTP_404_NOT_FOUND,
-            }
-
-        if user.is_verified:
-            return {
-                "message": "User already verified.",
-                "status": status.HTTP_200_OK,
-            }
-
-        token = create_verification_token(user.email)
-        send_verification_email(user.email, token)
-
-        return {
-            "message": "Verification email resent. Please check your inbox.",
-            "status": status.HTTP_200_OK,
-        }
-    except Exception as e:
-        return {
-            "error": f"Failed to resend verification email: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }

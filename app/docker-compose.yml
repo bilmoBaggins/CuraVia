@@ -4,14 +4,15 @@ services:
     container_name: mysql_service
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: curavia
-      MYSQL_USER: my_user
-      MYSQL_PASSWORD: my_password
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "3307:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app_network
 

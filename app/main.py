@@ -15,6 +15,6 @@ app.add_middleware(
 app.include_router(router)
 
 
-@app.get("/")
+@app.get("/api/main")
 def root():
     return {"message": "CuraVia is running", "status": status.HTTP_200_OK}

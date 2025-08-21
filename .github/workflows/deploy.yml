@@ -29,14 +29,18 @@ jobs:
             echo "MYSQL_PORT=${{ secrets.MYSQL_PORT }}" >> .env
             echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .env
             echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .env
+            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
             echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> .env
-            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
             echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
             echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> .env
             echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
             echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
             echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
             echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
+            echo "DATABASE_URL=mysql+mysqlconnector://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql_service:3306/curavia" >> .env
+            # Create init.sql for MySQL user grants
+            echo "GRANT ALL PRIVILEGES ON curavia.* TO '${{ secrets.MYSQL_USER }}'@'%' IDENTIFIED BY '${{ secrets.MYSQL_PASSWORD }}';" > init.sql
+            echo "FLUSH PRIVILEGES;" >> init.sql
             docker-compose build --no-cache
             docker-compose up -d
             docker compose run --rm fastapi alembic upgrade head

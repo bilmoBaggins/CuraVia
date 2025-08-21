@@ -48,7 +48,11 @@ tools = [search_tool, save_tool]
 def create_agent(memory):
     agent = create_tool_calling_agent(llm=llm, prompt=prompt, tools=tools)
     agent_executor = AgentExecutor(
-        agent=agent, tools=tools, verbose=True, memory=memory, max_iterations=15
+        agent=agent,
+        tools=tools,
+        verbose=True,
+        memory=memory,
+        max_iterations=15,
     )
     return agent_executor, parser
 
