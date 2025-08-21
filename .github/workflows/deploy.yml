@@ -37,6 +37,7 @@ jobs:
             echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
             echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
             echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
+            echo "DATABASE_URL=mysql+mysqlconnector://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql_service:3306/curavia" >> .env
             docker-compose build --no-cache
             docker-compose up -d
             docker compose run --rm fastapi alembic upgrade head
