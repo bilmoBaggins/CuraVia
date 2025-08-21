@@ -1,5 +1,5 @@
 services:
-  mysql:
+  mysql_service:
     image: mysql:8.0
     container_name: mysql_service
     restart: always
