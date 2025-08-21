@@ -3,7 +3,6 @@ from fastapi import APIRouter, status
 from models import (
     UserCreate,
     UserLogin,
-    ResendVerificationRequest,
     ConversationCreate,
     QueryModel,
 )
@@ -24,7 +23,6 @@ from datetime import datetime
 from passlib.context import CryptContext
 
 router = APIRouter()
-
 
 
 @router.get("/conversations")
@@ -146,7 +144,7 @@ async def get_messages(conversation_id: int, user_id: int):
         ]
     finally:
         session.close()
-      
+
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
