@@ -25,127 +25,6 @@ from passlib.context import CryptContext
 router = APIRouter()
 
 
-@router.get("/conversations")
-async def get_conversations(user_id: int):
-    session = SessionLocal()
-    try:
-        # Get all unique conversations for this user only
-        convo_ids = (
-            session.query(ChatHistory.convo_id)
-            .filter(ChatHistory.user_id == user_id)
-            .distinct()
-            .all()
-        )
-        conversations = []
-        from agent import ChatOpenAI
-
-        llm = ChatOpenAI(model="gpt-4o-mini")
-        for (convo_id,) in convo_ids:
-            msgs = (
-                session.query(ChatHistory)
-                .filter(
-                    ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id
-                )
-                .order_by(ChatHistory.timestamp)
-                .all()
-            )
-            # Build a summary prompt from all user and assistant messages
-            history = "\n".join([f"{m.sender}: {m.message}" for m in msgs])
-            title = None
-            if history:
-                try:
-                    ai_prompt = (
-                        "Summarize this chat in 5-7 words for a chat title. "
-                        "Be concise, relevant, and use natural language.\n" + history
-                    )
-                    ai_response = llm.invoke(ai_prompt)
-                    title = ai_response.strip()
-                except Exception:
-                    pass
-            if not title:
-                if msgs:
-                    title = msgs[0].message[:30]
-                else:
-                    title = f"Chat {convo_id}"
-            conversations.append({"id": convo_id, "title": title})
-        return conversations
-    finally:
-        session.close()
-
-
-@router.post("/conversations")
-async def create_conversation(body: ConversationCreate):
-    user_id = body.user_id
-    session = SessionLocal()
-    try:
-        # Find max convo_id for user, increment
-        max_convo = (
-            session.query(ChatHistory.convo_id)
-            .filter(ChatHistory.user_id == user_id)
-            .order_by(desc(ChatHistory.convo_id))
-            .first()
-        )
-        new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
-
-        # Generate title using agent
-        from agent import create_agent, format_memory_to_string
-
-        memory = None
-        try:
-            from memory import load_memory
-
-            memory = load_memory(user_id)
-        except Exception:
-            memory = None
-        agent_executor, parser = create_agent(memory)
-        chat_history_str = format_memory_to_string(memory) if memory else ""
-        # Use a default prompt for new chat title
-        prompt = "Generate a concise 4-5 word title for a new conversation."
-        raw_response = await agent_executor.ainvoke(
-            {"query": prompt, "chat_history": chat_history_str}
-        )
-        title = "Chat"
-        try:
-            output_text = raw_response.get("output") or raw_response.get(
-                "output_text", ""
-            )
-            structured_response = parser.parse(output_text)
-            if hasattr(structured_response, "title") and structured_response.title:
-                title = structured_response.title
-        except Exception:
-            pass
-
-        return {"id": new_convo_id, "title": title}
-    finally:
-        session.close()
-
-
-@router.delete("/conversations/{convo_id}")
-async def delete_conversation(convo_id: int):
-    # Do not delete chat history from the database. Only acknowledge the request.
-    return {"message": "Conversation closed (history retained)"}
-
-
-@router.get("/messages")
-async def get_messages(conversation_id: int, user_id: int):
-    session = SessionLocal()
-    try:
-        messages = (
-            session.query(ChatHistory)
-            .filter(
-                ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id
-            )
-            .order_by(ChatHistory.timestamp)
-            .all()
-        )
-        return [
-            {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
-            for m in messages
-        ]
-    finally:
-        session.close()
-
-
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -374,3 +253,124 @@ async def verify_email(token: str):
             "error": "Invalid verification token.",
             "status": status.HTTP_400_BAD_REQUEST,
         }
+
+
+@router.get("/conversations")
+async def get_conversations(user_id: int):
+    session = SessionLocal()
+    try:
+        # Get all unique conversations for this user only
+        convo_ids = (
+            session.query(ChatHistory.convo_id)
+            .filter(ChatHistory.user_id == user_id)
+            .distinct()
+            .all()
+        )
+        conversations = []
+        from agent import ChatOpenAI
+
+        llm = ChatOpenAI(model="gpt-4o-mini")
+        for (convo_id,) in convo_ids:
+            msgs = (
+                session.query(ChatHistory)
+                .filter(
+                    ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id
+                )
+                .order_by(ChatHistory.timestamp)
+                .all()
+            )
+            # Build a summary prompt from all user and assistant messages
+            history = "\n".join([f"{m.sender}: {m.message}" for m in msgs])
+            title = None
+            if history:
+                try:
+                    ai_prompt = (
+                        "Summarize this chat in 5-7 words for a chat title. "
+                        "Be concise, relevant, and use natural language.\n" + history
+                    )
+                    ai_response = llm.invoke(ai_prompt)
+                    title = ai_response.strip()
+                except Exception:
+                    pass
+            if not title:
+                if msgs:
+                    title = msgs[0].message[:30]
+                else:
+                    title = f"Chat {convo_id}"
+            conversations.append({"id": convo_id, "title": title})
+        return conversations
+    finally:
+        session.close()
+
+
+@router.post("/conversations")
+async def create_conversation(body: ConversationCreate):
+    user_id = body.user_id
+    session = SessionLocal()
+    try:
+        # Find max convo_id for user, increment
+        max_convo = (
+            session.query(ChatHistory.convo_id)
+            .filter(ChatHistory.user_id == user_id)
+            .order_by(desc(ChatHistory.convo_id))
+            .first()
+        )
+        new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
+
+        # Generate title using agent
+        from agent import create_agent, format_memory_to_string
+
+        memory = None
+        try:
+            from memory import load_memory
+
+            memory = load_memory(user_id)
+        except Exception:
+            memory = None
+        agent_executor, parser = create_agent(memory)
+        chat_history_str = format_memory_to_string(memory) if memory else ""
+        # Use a default prompt for new chat title
+        prompt = "Generate a concise 4-5 word title for a new conversation."
+        raw_response = await agent_executor.ainvoke(
+            {"query": prompt, "chat_history": chat_history_str}
+        )
+        title = "Chat"
+        try:
+            output_text = raw_response.get("output") or raw_response.get(
+                "output_text", ""
+            )
+            structured_response = parser.parse(output_text)
+            if hasattr(structured_response, "title") and structured_response.title:
+                title = structured_response.title
+        except Exception:
+            pass
+
+        return {"id": new_convo_id, "title": title}
+    finally:
+        session.close()
+
+
+@router.delete("/conversations/{convo_id}")
+async def delete_conversation(convo_id: int):
+    # Do not delete chat history from the database. Only acknowledge the request.
+    return {"message": "Conversation closed (history retained)"}
+
+
+@router.get("/messages")
+async def get_messages(conversation_id: int, user_id: int):
+    session = SessionLocal()
+    try:
+        messages = (
+            session.query(ChatHistory)
+            .filter(
+                ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id
+            )
+            .order_by(ChatHistory.timestamp)
+            .all()
+        )
+        return [
+            {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
+            for m in messages
+        ]
+    finally:
+        session.close()
