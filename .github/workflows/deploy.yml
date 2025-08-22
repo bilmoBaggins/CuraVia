@@ -51,4 +51,4 @@ jobs:
               echo "Waiting for MySQL to be ready..."
               sleep 2
             done
-            docker compose run --rm fastapi alembic upgrade head
+            # docker compose run --rm fastapi alembic upgrade head
