@@ -12,9 +12,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
-
-
-@app.get("/api/main")
-def root():
-    return {"message": "CuraVia is running", "status": status.HTTP_200_OK}
+app.include_router(router, prefix="/api")
