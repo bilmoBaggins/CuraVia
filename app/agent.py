@@ -33,8 +33,7 @@ prompt = ChatPromptTemplate.from_messages(
             "ask an appropriate question related to the conversation. If user "
             "corrects you in any way, acknowledge the correction, apologise "
             "and adjust your response accordingly to encourage further "
-            "discussion. Provide a concise 4-5 word title for the conversation "
-            "in a 'title' field. Provide no other text. {format_instructions}",
+            "discussion. Provide no other text. {format_instructions}",
         ),
         ("human", "Conversation history:\n{chat_history}"),
         ("human", "{query}"),
