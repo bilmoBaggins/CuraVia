@@ -41,6 +41,7 @@ jobs:
             # Create init.sql for MySQL user grants
             echo "GRANT ALL PRIVILEGES ON curavia.* TO '${{ secrets.MYSQL_USER }}'@'%' IDENTIFIED BY '${{ secrets.MYSQL_PASSWORD }}';" > init.sql
             echo "FLUSH PRIVILEGES;" >> init.sql
+            docker compose down
             docker-compose build --no-cache
             docker-compose up -d
             docker compose run --rm fastapi alembic upgrade head
