@@ -19,6 +19,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            echo "MYSQL_USER is: ${{ secrets.MYSQL_USER }}"
+            echo "MYSQL_PASSWORD is: ${{ secrets.MYSQL_PASSWORD }}"
             cd /var/www/CuraVia-backend/app
             git pull
             # Create .env file with all required secrets
@@ -38,6 +40,7 @@ jobs:
             echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
             echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
             echo "DATABASE_URL=mysql+mysqlconnector://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql_service:3306/curavia" >> .env
+            cat .env | grep DATABASE_URL
             # Create init.sql for MySQL user grants
             echo "GRANT ALL PRIVILEGES ON curavia.* TO '${{ secrets.MYSQL_USER }}'@'%' IDENTIFIED BY '${{ secrets.MYSQL_PASSWORD }}';" > init.sql
             echo "FLUSH PRIVILEGES;" >> init.sql
@@ -49,4 +52,4 @@ jobs:
               echo "Waiting for MySQL to be ready..."
               sleep 2
             done
-            docker compose run --rm fastapi alembic upgrade head
+            # docker compose run --rm fastapi alembic upgrade head
