@@ -19,7 +19,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /root/CuraVia-backend/app
+            cd /var/www/CuraVia-backend/app
             git pull
             # Create .env file with all required secrets
             echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
