@@ -36,6 +36,9 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
+@router.get("/")
+def read_root():
+    return {"status": "ok", "message": "Welcome to CuraVia API"}
 
 @router.post("/ask")
 async def ask_question(body: QueryModel):
