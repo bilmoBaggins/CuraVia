@@ -46,9 +46,3 @@ jobs:
             docker compose down
             docker-compose build --no-cache
             docker-compose up -d
-            # Wait for MySQL to be ready before running Alembic migrations
-            until docker exec mysql_service mysqladmin ping -h "localhost" --silent; do
-              echo "Waiting for MySQL to be ready..."
-              sleep 2
-            done
-            # docker compose run --rm fastapi alembic upgrade head
