@@ -80,4 +80,14 @@ To fix formatting errors
 flake8 .; black .; mypy .
 ```
 
-#
+# Production command
+
+first time setup needed manually run 
+``` 
+docker compose run --rm fastapi alembic revision --autogenerate -m "init"
+```
+Then any changes after this must run below
+```
+docker compose run --rm fastapi alembic upgrade head
+```
+
