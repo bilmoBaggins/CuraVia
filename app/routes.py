@@ -23,7 +23,6 @@ from datetime import datetime
 from passlib.context import CryptContext
 
 
-
 router = APIRouter()
 
 
@@ -292,9 +291,7 @@ async def get_conversations(user_id: int):
             .all()
         )
         conversations = []
-        from agent import ChatOpenAI
-
-        llm = ChatOpenAI(model="gpt-4o-mini")
+        
         for (convo_id,) in convo_ids:
             msgs = (
                 session.query(ChatHistory)
@@ -316,9 +313,9 @@ async def get_conversations(user_id: int):
                         .order_by(desc(ChatHistory.convo_id))
                         .first()
                     )
-                    new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
-                    title = f"Chat {new_convo_id}"
-            conversations.append({"id": new_convo_id, "title": title})
+                    convo_id = (max_convo.convo_id + 1) if max_convo else 1
+                    title = f"Chat {convo_id}"
+            conversations.append({"id": convo_id, "title": title})
         return conversations
     finally:
         session.close()
@@ -338,31 +335,9 @@ async def create_conversation(body: ConversationCreate):
         )
         new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
 
-        return {"id": new_convo_id}
-    finally:
-        session.close()
-
-
-# RESTful endpoint to close a chat (add to closedChats, do not delete history)
-@router.delete("/conversations/{convo_id}/close")
-async def close_conversation(convo_id: int, user_id: int):
-    session = SessionLocal()
-    try:
-        user = session.query(User).filter(User.id == user_id).first()
-        if not user:
-            return {
-                "error": "User not found",
-                "status": status.HTTP_404_NOT_FOUND
-            }
-        closed = user.closedChats if user.closedChats else []
-        if convo_id not in closed:
-            closed.append(convo_id)
-            user.closedChats = closed
-            session.commit()
         return {
-            "message": "Chat closed",
-            "closedChats": user.closedChats,
-            "status": status.HTTP_200_OK
+            "message": f"New conversation created with ID: {new_convo_id}",
+            "status": status.HTTP_201_CREATED
         }
     finally:
         session.close()
@@ -423,6 +398,9 @@ async def add_closed_chat(user_id: int, data: dict = Body(...)):
             closed.append(convo_id)
             user.closedChats = closed
             session.commit()
-        return {"closedChats": user.closedChats}
+        return {
+            "closedChats": user.closedChats,
+            "status": status.HTTP_200_OK
+        }
     finally:
         session.close()

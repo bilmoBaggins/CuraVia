@@ -21,7 +21,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    closedChats: Mapped[list[int]] = mapped_column(JSON, nullable=True)
+    closedChats: Mapped[list[int]] = mapped_column(JSON, default=list)
     username: Mapped[str] = mapped_column(String(50), unique=True)
     password: Mapped[str] = mapped_column(String(255))
     first_name: Mapped[str] = mapped_column(String(100))

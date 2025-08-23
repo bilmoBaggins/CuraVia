@@ -25,7 +25,7 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("closedChats", sa.JSON(), nullable=True),
+        sa.Column("closedChats", sa.JSON(), default=list, nullable=True),
         sa.Column("username", sa.String(length=50), nullable=False),
         sa.Column("password", sa.String(length=255), nullable=False),
         sa.Column("first_name", sa.String(length=255), nullable=True),
