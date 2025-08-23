@@ -26,7 +26,6 @@ from passlib.context import CryptContext
 router = APIRouter()
 
 
-
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -38,9 +37,11 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
+
 @router.get("/")
 def read_root():
     return {"status": "ok", "message": "Welcome to CuraVia API"}
+
 
 @router.post("/ask")
 async def ask_question(body: QueryModel):
@@ -196,10 +197,14 @@ async def login_user(body: UserLogin):
     try:
         user = session.query(User).filter(User.username == body.username).first()
         if not user:
-            return {"error": "Invalid username or password.", "status": status.HTTP_401_UNAUTHORIZED}
+            return {
+                "error": "Invalid username or password.",
+                "status": status.HTTP_401_UNAUTHORIZED,
+            }
         if not user.is_verified:
             return {
-                "error": "Your account is not verified. Please check your email and verify your account to log in.",
+                "error": "Your account is not verified. "
+                "Please check your email and verify your account to log in.",
                 "status": status.HTTP_403_FORBIDDEN,
                 "resend_verification": True,
                 "email": user.email,
@@ -274,6 +279,7 @@ async def send_verification_email_endpoint(request: Request):
     if not email:
         return {"error": "Email is required.", "status": status.HTTP_400_BAD_REQUEST}
     from utils import send_verification_email, create_verification_token
+
     token = create_verification_token(email)
     result = send_verification_email(email, token)
     return result
@@ -291,7 +297,7 @@ async def get_conversations(user_id: int):
             .all()
         )
         conversations = []
-        
+
         for (convo_id,) in convo_ids:
             msgs = (
                 session.query(ChatHistory)
@@ -337,7 +343,7 @@ async def create_conversation(body: ConversationCreate):
 
         return {
             "message": f"New conversation created with ID: {new_convo_id}",
-            "status": status.HTTP_201_CREATED
+            "status": status.HTTP_201_CREATED,
         }
     finally:
         session.close()
@@ -383,24 +389,15 @@ async def add_closed_chat(user_id: int, data: dict = Body(...)):
     try:
         user = session.query(User).filter(User.id == user_id).first()
         if not user:
-            return {
-                "error": "User not found",
-                "status": status.HTTP_404_NOT_FOUND
-            }
+            return {"error": "User not found", "status": status.HTTP_404_NOT_FOUND}
         convo_id = data.get("convo_id")
         if convo_id is None:
-            return {
-                "error": "Missing convo_id",
-                "status": status.HTTP_400_BAD_REQUEST
-            }
+            return {"error": "Missing convo_id", "status": status.HTTP_400_BAD_REQUEST}
         closed = user.closedChats if user.closedChats else []
         if convo_id not in closed:
             closed.append(convo_id)
             user.closedChats = closed
             session.commit()
-        return {
-            "closedChats": user.closedChats,
-            "status": status.HTTP_200_OK
-        }
+        return {"closedChats": user.closedChats, "status": status.HTTP_200_OK}
     finally:
         session.close()
