@@ -1,5 +1,5 @@
 import jwt  # type: ignore
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Request, Body
 from models import (
     UserCreate,
     UserLogin,
@@ -22,6 +22,7 @@ from utils import (
 from datetime import datetime
 from passlib.context import CryptContext
 
+
 router = APIRouter()
 
 
@@ -36,9 +37,11 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
+
 @router.get("/")
 def read_root():
     return {"status": "ok", "message": "Welcome to CuraVia API"}
+
 
 @router.post("/ask")
 async def ask_question(body: QueryModel):
@@ -194,29 +197,39 @@ async def login_user(body: UserLogin):
     try:
         user = session.query(User).filter(User.username == body.username).first()
         if not user:
-            return {"error": "User not found.", "status": status.HTTP_404_NOT_FOUND}
+            return {
+                "error": "Invalid username or password.",
+                "status": status.HTTP_401_UNAUTHORIZED,
+            }
+        if not user.is_verified:
+            return {
+                "error": "Your account is not verified. "
+                "Please check your email and verify your account to log in.",
+                "status": status.HTTP_403_FORBIDDEN,
+                "resend_verification": True,
+                "email": user.email,
+            }
+        if verify_password(body.password, user.password):
+            access_token = create_access_token(
+                {"sub": user.username, "user_id": user.id}
+            )
+            return {
+                "message": "Login successful.",
+                "status": status.HTTP_200_OK,
+                "access_token": access_token,
+                "user": {
+                    "user_id": user.id,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "username": user.username,
+                    "is_verified": user.is_verified,
+                },
+            }
         else:
-            if verify_password(body.password, user.password):
-                access_token = create_access_token(
-                    {"sub": user.username, "user_id": user.id}
-                )
-                return {
-                    "message": "Login successful.",
-                    "status": status.HTTP_200_OK,
-                    "access_token": access_token,
-                    "user": {
-                        "user_id": user.id,
-                        "first_name": user.first_name,
-                        "last_name": user.last_name,
-                        "username": user.username,
-                        "is_verified": user.is_verified,
-                    },
-                }
-            else:
-                return {
-                    "error": "Invalid password.",
-                    "status": status.HTTP_401_UNAUTHORIZED,
-                }
+            return {
+                "error": "Invalid username or password.",
+                "status": status.HTTP_401_UNAUTHORIZED,
+            }
     except Exception as e:
         return {
             "error": f"Login failed: {e}",
@@ -258,6 +271,20 @@ async def verify_email(token: str):
         }
 
 
+# New endpoint to send verification email directly
+@router.post("/send-verification-email")
+async def send_verification_email_endpoint(request: Request):
+    data = await request.json()
+    email = data.get("email")
+    if not email:
+        return {"error": "Email is required.", "status": status.HTTP_400_BAD_REQUEST}
+    from utils import send_verification_email, create_verification_token
+
+    token = create_verification_token(email)
+    result = send_verification_email(email, token)
+    return result
+
+
 @router.get("/conversations")
 async def get_conversations(user_id: int):
     session = SessionLocal()
@@ -270,9 +297,7 @@ async def get_conversations(user_id: int):
             .all()
         )
         conversations = []
-        from agent import ChatOpenAI
 
-        llm = ChatOpenAI(model="gpt-4o-mini")
         for (convo_id,) in convo_ids:
             msgs = (
                 session.query(ChatHistory)
@@ -283,22 +308,18 @@ async def get_conversations(user_id: int):
                 .all()
             )
             # Build a summary prompt from all user and assistant messages
-            history = "\n".join([f"{m.sender}: {m.message}" for m in msgs])
             title = None
-            if history:
-                try:
-                    ai_prompt = (
-                        "Summarize this chat in 5-7 words for a chat title. "
-                        "Be concise, relevant, and use natural language.\n" + history
-                    )
-                    ai_response = llm.invoke(ai_prompt)
-                    title = ai_response.strip()
-                except Exception:
-                    pass
             if not title:
                 if msgs:
                     title = msgs[0].message[:30]
                 else:
+                    max_convo = (
+                        session.query(ChatHistory.convo_id)
+                        .filter(ChatHistory.user_id == user_id)
+                        .order_by(desc(ChatHistory.convo_id))
+                        .first()
+                    )
+                    convo_id = (max_convo.convo_id + 1) if max_convo else 1
                     title = f"Chat {convo_id}"
             conversations.append({"id": convo_id, "title": title})
         return conversations
@@ -320,43 +341,12 @@ async def create_conversation(body: ConversationCreate):
         )
         new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
 
-        # Generate title using agent
-        from agent import create_agent, format_memory_to_string
-
-        memory = None
-        try:
-            from memory import load_memory
-
-            memory = load_memory(user_id)
-        except Exception:
-            memory = None
-        agent_executor, parser = create_agent(memory)
-        chat_history_str = format_memory_to_string(memory) if memory else ""
-        # Use a default prompt for new chat title
-        prompt = "Generate a concise 4-5 word title for a new conversation."
-        raw_response = await agent_executor.ainvoke(
-            {"query": prompt, "chat_history": chat_history_str}
-        )
-        title = "Chat"
-        try:
-            output_text = raw_response.get("output") or raw_response.get(
-                "output_text", ""
-            )
-            structured_response = parser.parse(output_text)
-            if hasattr(structured_response, "title") and structured_response.title:
-                title = structured_response.title
-        except Exception:
-            pass
-
-        return {"id": new_convo_id, "title": title}
+        return {
+            "message": f"New conversation created with ID: {new_convo_id}",
+            "status": status.HTTP_201_CREATED,
+        }
     finally:
         session.close()
-
-
-@router.delete("/conversations/{convo_id}")
-async def delete_conversation(convo_id: int):
-    # Do not delete chat history from the database. Only acknowledge the request.
-    return {"message": "Conversation closed (history retained)"}
 
 
 @router.get("/messages")
@@ -375,5 +365,39 @@ async def get_messages(conversation_id: int, user_id: int):
             {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
             for m in messages
         ]
+    finally:
+        session.close()
+
+
+# Get closedChats for a user
+@router.get("/users/{user_id}/closed_chats")
+async def get_closed_chats(user_id: int):
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user:
+            return []
+        return user.closedChats if user.closedChats else []
+    finally:
+        session.close()
+
+
+# Add a convo_id to closedChats for a user
+@router.post("/users/{user_id}/closed_chats")
+async def add_closed_chat(user_id: int, data: dict = Body(...)):
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"error": "User not found", "status": status.HTTP_404_NOT_FOUND}
+        convo_id = data.get("convo_id")
+        if convo_id is None:
+            return {"error": "Missing convo_id", "status": status.HTTP_400_BAD_REQUEST}
+        closed = user.closedChats if user.closedChats else []
+        if convo_id not in closed:
+            closed.append(convo_id)
+            user.closedChats = closed
+            session.commit()
+        return {"closedChats": user.closedChats, "status": status.HTTP_200_OK}
     finally:
         session.close()
