@@ -238,7 +238,7 @@ async def login_user(body: UserLogin):
 
 
 @router.get("/verify")
-async def verify_email(token: str):
+def verify_email(token: str):
     session = SessionLocal()
     try:
         payload = jwt.decode(token, str(SECRET_KEY), algorithms="HS256")
@@ -252,12 +252,18 @@ async def verify_email(token: str):
                 "status": status.HTTP_404_NOT_FOUND,
             }
 
-        user.is_verified = True
-        session.commit()
-        return {
-            "message": f"Email {email} has been verified!",
-            "status": status.HTTP_200_OK,
-        }
+        if user.is_verified:
+            return {
+                "message": f"Email {email} is already verified!",
+                "status": status.HTTP_200_OK,
+            }
+        else:
+            user.is_verified = True
+            session.commit()
+            return {
+                "message": f"Email {email} has been verified!",
+                "status": status.HTTP_200_OK,
+            }
 
     except jwt.ExpiredSignatureError:
         return {
