@@ -11,6 +11,7 @@ from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
 from agent import create_agent, format_memory_to_string
 from database import SessionLocal
 from sqlalchemy import desc, func
+from sqlalchemy.orm.attributes import flag_modified
 from utils import (
     save_to_txt,
     save_to_cache,
@@ -391,6 +392,7 @@ async def add_closed_chat(user_id: int, data: dict = Body(...)):
             closed.append(convo_id)
             print(closed)
             user.closedChats = closed
+            flag_modified(user, "closedChats")
             session.commit()
         return {"closedChats": user.closedChats, "status": status.HTTP_200_OK}
     finally:
