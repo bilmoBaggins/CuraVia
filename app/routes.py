@@ -40,28 +40,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 @router.get("/")
 def read_root():
-    return {"status": "ok", "message": "Welcome to CuraVia API"}
+    return {
+        "message": "Welcome to CuraVia API",
+        "status": status.HTTP_200_OK
+    }
 
 
 @router.post("/ask")
 async def ask_question(body: QueryModel):
-
-    # Greeting detection
-    greetings = [
-        "hi",
-        "hello",
-        "hey",
-        "greetings",
-        "good morning",
-        "good afternoon",
-        "good evening",
-    ]
-    if any(greet in body.query.lower() for greet in greetings):
-        return {
-            "message": "Hello! I'm CuraVia, your assistant. How can I help you today?",
-            "status": status.HTTP_200_OK,
-        }
-
     if body.user_id == 0:
         clear_guest_memory()
     memory = load_memory(body.user_id)
@@ -205,9 +191,9 @@ async def login_user(body: UserLogin):
             return {
                 "error": "Your account is not verified. "
                 "Please check your email and verify your account to log in.",
-                "status": status.HTTP_403_FORBIDDEN,
                 "resend_verification": True,
                 "email": user.email,
+                "status": status.HTTP_403_FORBIDDEN,
             }
         if verify_password(body.password, user.password):
             access_token = create_access_token(
@@ -215,7 +201,6 @@ async def login_user(body: UserLogin):
             )
             return {
                 "message": "Login successful.",
-                "status": status.HTTP_200_OK,
                 "access_token": access_token,
                 "user": {
                     "user_id": user.id,
@@ -224,6 +209,7 @@ async def login_user(body: UserLogin):
                     "username": user.username,
                     "is_verified": user.is_verified,
                 },
+                "status": status.HTTP_200_OK,
             }
         else:
             return {
@@ -252,16 +238,16 @@ def verify_email(token: str):
                 "status": status.HTTP_404_NOT_FOUND,
             }
 
-        if user.is_verified:
-            return {
-                "message": f"Email {email} is already verified!",
-                "status": status.HTTP_200_OK,
-            }
-        else:
+        if not user.is_verified:
             user.is_verified = True
             session.commit()
             return {
                 "message": f"Email {email} has been verified!",
+                "status": status.HTTP_200_OK,
+            }
+        else:
+            return {
+                "message": f"Email {email} is already verified!",
                 "status": status.HTTP_200_OK,
             }
 
@@ -400,8 +386,10 @@ async def add_closed_chat(user_id: int, data: dict = Body(...)):
         if convo_id is None:
             return {"error": "Missing convo_id", "status": status.HTTP_400_BAD_REQUEST}
         closed = user.closedChats if user.closedChats else []
+        print(closed)
         if convo_id not in closed:
             closed.append(convo_id)
+            print(closed)
             user.closedChats = closed
             session.commit()
         return {"closedChats": user.closedChats, "status": status.HTTP_200_OK}
