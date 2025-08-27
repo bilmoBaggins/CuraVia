@@ -10,7 +10,7 @@ from models_db import User, ChatHistory
 from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
 from agent import create_agent, format_memory_to_string
 from database import SessionLocal
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from utils import (
     save_to_txt,
     save_to_cache,
@@ -289,16 +289,16 @@ async def send_verification_email_endpoint(request: Request):
 async def get_conversations(user_id: int):
     session = SessionLocal()
     try:
-        # Get all unique conversations for this user only
+        # Get all unique conversations for this user, ordered by latest timestamp (most recent first)
         convo_ids = (
-            session.query(ChatHistory.convo_id)
+            session.query(ChatHistory.convo_id, func.max(ChatHistory.timestamp).label("latest"))
             .filter(ChatHistory.user_id == user_id)
-            .distinct()
+            .group_by(ChatHistory.convo_id)
+            .order_by(desc("latest"))
             .all()
         )
         conversations = []
-
-        for (convo_id,) in convo_ids:
+        for convo_id, _ in convo_ids:
             msgs = (
                 session.query(ChatHistory)
                 .filter(
