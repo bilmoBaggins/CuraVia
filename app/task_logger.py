@@ -2,6 +2,7 @@ from functools import wraps
 from database import SessionLocal
 from models_db import BackgroundJobs
 
+
 def log_background_job(title: str):
     def decorator(func):
         @wraps(func)
@@ -38,4 +39,5 @@ def log_background_job(title: str):
                 session.close()
 
         return wrapper
+
     return decorator

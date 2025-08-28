@@ -16,5 +16,12 @@ SessionLocal = sessionmaker(bind=engine)
 
 # Redis settings
 REDIS_URL = os.getenv("REDIS_URL")
-REDIS_EXPIRATION_SECONDS = int(os.getenv("REDIS_EXPIRATION_SECONDS"))
+if REDIS_URL is None:
+    raise ValueError("REDIS_URL not set! Check your .env file.")
+
+REDIS_EXPIRATION_SECONDS_RAW = os.getenv("REDIS_EXPIRATION_SECONDS")
+if REDIS_EXPIRATION_SECONDS_RAW is None:
+    raise ValueError("REDIS_EXPIRATION_SECONDS not set! Check your .env file.")
+REDIS_EXPIRATION_SECONDS = int(REDIS_EXPIRATION_SECONDS_RAW)
+
 redis_client = redis.Redis.from_url(REDIS_URL)

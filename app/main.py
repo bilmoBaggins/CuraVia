@@ -8,9 +8,13 @@ load_dotenv()
 
 app = FastAPI(title="CuraVia", version="1.0")
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+if FRONTEND_URL is None:
+    raise ValueError("FRONTEND_URL not set! Check your .env file.")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL")],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

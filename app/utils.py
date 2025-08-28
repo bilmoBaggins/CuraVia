@@ -11,17 +11,40 @@ from email.mime.multipart import MIMEMultipart
 from urllib.parse import quote
 from celery import Celery  # type: ignore
 from task_logger import log_background_job
+from typing import Optional
 
 load_dotenv()  # Loads variables from .env
 
-celery = Celery("tasks", broker="redis://redis_service:6379/0", backend="redis://redis_service:6379/0")
+celery = Celery(
+    "tasks",
+    broker="redis://redis_service:6379/0",
+    backend="redis://redis_service:6379/0",
+)
 
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT"))
-SMTP_USER = os.getenv("SMTP_USER")  # your email
-SMTP_PASS = os.getenv("SMTP_PASS")  # app password if Gmail
+SMTP_SERVER_RAW = os.getenv("SMTP_SERVER")
+if SMTP_SERVER_RAW is None:
+    raise ValueError("SMTP_SERVER not set! Check your .env file.")
+SMTP_SERVER: str = SMTP_SERVER_RAW
 
-FRONTEND_URL = os.getenv("FRONTEND_URL")
+SMTP_PORT_RAW = os.getenv("SMTP_PORT")
+if SMTP_PORT_RAW is None:
+    raise ValueError("SMTP_PORT not set! Check your .env file.")
+SMTP_PORT: int = int(SMTP_PORT_RAW)
+
+SMTP_USER_RAW = os.getenv("SMTP_USER")
+if SMTP_USER_RAW is None:
+    raise ValueError("SMTP_USER not set! Check your .env file.")
+SMTP_USER: str = SMTP_USER_RAW
+
+SMTP_PASS_RAW = os.getenv("SMTP_PASS")
+if SMTP_PASS_RAW is None:
+    raise ValueError("SMTP_PASS not set! Check your .env file.")
+SMTP_PASS: str = SMTP_PASS_RAW
+
+FRONTEND_URL_RAW = os.getenv("FRONTEND_URL")
+if FRONTEND_URL_RAW is None:
+    raise ValueError("FRONTEND_URL not set! Check your .env file.")
+FRONTEND_URL: str = FRONTEND_URL_RAW
 
 
 def save_to_txt(data: str, filename: str = "history.txt"):
@@ -124,5 +147,5 @@ def send_verification_email(to_email: str, token: str):
 
 @celery.task()
 @log_background_job("Send verification email")
-def send_email_task(to_email: str, token: str, job_id: int = None):
+def send_email_task(to_email: str, token: str, job_id: Optional[int] = None):
     return send_verification_email(to_email, token)

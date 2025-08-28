@@ -22,6 +22,7 @@ from utils import (
 )
 from datetime import datetime
 from passlib.context import CryptContext
+from typing import Any, Dict
 
 
 router = APIRouter()
@@ -39,13 +40,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_job(user_id: id, title: str, payload: dict):
+def create_job(user_id: int, title: str, payload: Dict[str, Any]):
     session = SessionLocal()
     job = BackgroundJobs(
-        user_id=user_id,
-        title=title,
-        payload=payload,
-        status="pending"
+        user_id=user_id, title=title, payload=payload, status="pending"
     )
     session.add(job)
     session.commit()
@@ -56,10 +54,7 @@ def create_job(user_id: id, title: str, payload: dict):
 
 @router.get("/")
 def read_root():
-    return {
-        "message": "Welcome to CuraVia API",
-        "status": status.HTTP_200_OK
-    }
+    return {"message": "Welcome to CuraVia API", "status": status.HTTP_200_OK}
 
 
 @router.post("/ask")
@@ -184,21 +179,27 @@ async def signup_user(body: UserCreate):
             }
 
         token = create_verification_token(body.email)
-        user_id=1
+        user_id = 1
         job = create_job(
             user_id=user_id,
             title="Send Verification Email",
-            payload={"email": body.email, "token": token}
+            payload={"email": body.email, "token": token},
         )
 
         # Queue the task in Celery and attach job_id
-        task = send_email_task.apply_async(args=[body.email, token], kwargs={"job_id": job.id})
+        task = send_email_task.apply_async(
+            args=[body.email, token], kwargs={"job_id": job.id}
+        )
 
         # Update job with Celery task_id
         db = SessionLocal()
-        job_record = db.query(BackgroundJobs).filter(BackgroundJobs.id == job.id).first()
-        job_record.task_id = task.id
-        db.commit()
+        job_record = (
+            db.query(BackgroundJobs).filter(BackgroundJobs.id == job.id).first()
+        )
+        # Fix for possible None job_record
+        if job_record is not None:
+            job_record.task_id = task.id
+            db.commit()
         db.close()
 
         return {
@@ -321,9 +322,10 @@ async def send_verification_email_endpoint(request: Request):
 async def get_conversations(user_id: int):
     session = SessionLocal()
     try:
-        # Get all unique conversations for this user, ordered by latest timestamp (most recent first)
         convo_ids = (
-            session.query(ChatHistory.convo_id, func.max(ChatHistory.timestamp).label("latest"))
+            session.query(
+                ChatHistory.convo_id, func.max(ChatHistory.timestamp).label("latest")
+            )
             .filter(ChatHistory.user_id == user_id)
             .group_by(ChatHistory.convo_id)
             .order_by(desc("latest"))
