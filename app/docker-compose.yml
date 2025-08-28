@@ -44,6 +44,35 @@ services:
     networks:
       - app_network
 
+  celery:
+    build: .
+    container_name: celery_worker
+    command: celery -A utils worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - fastapi
+    env_file:
+      - .env
+    networks:
+      - app_network
+
+  alembic:
+    build: .
+    container_name: alembic
+    command: alembic upgrade head
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - fastapi
+      - mysql
+    env_file:
+      - .env
+    networks:
+      - app_network
+
 volumes:
   mysql_data:
   redis_data:

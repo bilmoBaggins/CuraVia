@@ -6,7 +6,7 @@ from models import (
     ConversationCreate,
     QueryModel,
 )
-from models_db import User, ChatHistory
+from models_db import User, ChatHistory, BackgroundJobs
 from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
 from agent import create_agent, format_memory_to_string
 from database import SessionLocal
@@ -18,10 +18,11 @@ from utils import (
     SECRET_KEY,
     create_access_token,
     create_verification_token,
-    send_verification_email,
+    send_email_task,
 )
 from datetime import datetime
 from passlib.context import CryptContext
+from typing import Any, Dict
 
 
 router = APIRouter()
@@ -39,12 +40,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def create_job(user_id: int, title: str, payload: Dict[str, Any]):
+    session = SessionLocal()
+    job = BackgroundJobs(
+        user_id=user_id, title=title, payload=payload, status="pending"
+    )
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    session.close()
+    return job
+
+
 @router.get("/")
 def read_root():
-    return {
-        "message": "Welcome to CuraVia API",
-        "status": status.HTTP_200_OK
-    }
+    return {"message": "Welcome to CuraVia API", "status": status.HTTP_200_OK}
 
 
 @router.post("/ask")
@@ -116,7 +126,6 @@ async def ask_question(body: QueryModel):
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
 
-        # Optional: still try saving to text/cache but don't block DB insert
         try:
             save_to_txt(formatted_output)
         except Exception as e:
@@ -154,7 +163,7 @@ async def signup_user(body: UserCreate):
         # Hash the password before storing
         hashed_password = hash_password(body.password)
 
-        newUser_to_db(
+        user_id = newUser_to_db(
             body.username,
             hashed_password,
             body.first_name,
@@ -163,12 +172,41 @@ async def signup_user(body: UserCreate):
             body.location,
         )
 
+        if not user_id:
+            return {
+                "error": "Failed to create new user.",
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+
         token = create_verification_token(body.email)
-        send_verification_email(body.email, token)
+        user_id = 1
+        job = create_job(
+            user_id=user_id,
+            title="Send Verification Email",
+            payload={"email": body.email, "token": token},
+        )
+
+        # Queue the task in Celery and attach job_id
+        task = send_email_task.apply_async(
+            args=[body.email, token], kwargs={"job_id": job.id}
+        )
+
+        # Update job with Celery task_id
+        db = SessionLocal()
+        job_record = (
+            db.query(BackgroundJobs).filter(BackgroundJobs.id == job.id).first()
+        )
+        # Fix for possible None job_record
+        if job_record is not None:
+            job_record.task_id = task.id
+            db.commit()
+        db.close()
 
         return {
             "message": "User created successfully. "
             "Please check your email to verify your account.",
+            "job_id": job.id,
+            "task_id": task.id,
             "status": status.HTTP_201_CREATED,
         }
     except Exception as e:
@@ -176,6 +214,8 @@ async def signup_user(body: UserCreate):
             "error": f"Failed to create new user: {e}",
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
+    finally:
+        session.close()
 
 
 @router.post("/login")
@@ -282,9 +322,10 @@ async def send_verification_email_endpoint(request: Request):
 async def get_conversations(user_id: int):
     session = SessionLocal()
     try:
-        # Get all unique conversations for this user, ordered by latest timestamp (most recent first)
         convo_ids = (
-            session.query(ChatHistory.convo_id, func.max(ChatHistory.timestamp).label("latest"))
+            session.query(
+                ChatHistory.convo_id, func.max(ChatHistory.timestamp).label("latest")
+            )
             .filter(ChatHistory.user_id == user_id)
             .group_by(ChatHistory.convo_id)
             .order_by(desc("latest"))

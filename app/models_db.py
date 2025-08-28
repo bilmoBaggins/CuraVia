@@ -44,3 +44,17 @@ class ChatHistory(Base):
     message: Mapped[str] = mapped_column(Text)
     sender: Mapped[SenderEnum] = mapped_column(Enum(SenderEnum))
     timestamp: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
+
+
+# BackgroundJobs table
+class BackgroundJobs(Base):
+    __tablename__ = "background_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    error: Mapped[str] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
