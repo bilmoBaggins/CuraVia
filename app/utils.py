@@ -9,17 +9,19 @@ from dotenv import load_dotenv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from urllib.parse import quote
-
+from celery import Celery  # type: ignore
+from task_logger import log_background_job
 
 load_dotenv()  # Loads variables from .env
 
+celery = Celery("tasks", broker="redis://redis_service:6379/0", backend="redis://redis_service:6379/0")
 
-SMTP_SERVER = os.getenv("SMTP_SERVER") or ""
-SMTP_PORT = int(os.getenv("SMTP_PORT") or "587")
-SMTP_USER = os.getenv("SMTP_USER") or ""  # your email
-SMTP_PASS = os.getenv("SMTP_PASS") or ""  # app password if Gmail
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT"))
+SMTP_USER = os.getenv("SMTP_USER")  # your email
+SMTP_PASS = os.getenv("SMTP_PASS")  # app password if Gmail
 
-FRONTEND_URL = os.getenv("FRONTEND_URL") or ""
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 def save_to_txt(data: str, filename: str = "history.txt"):
@@ -79,10 +81,6 @@ def create_verification_token(email: str):
 
 
 def send_verification_email(to_email: str, token: str):
-    """
-    Send verification email to the user.
-    The link now includes the email so frontend can prefill resend.
-    """
     # Encode email for URL safety
     email_param = quote(to_email)
     verification_link = f"{FRONTEND_URL}/verify?token={token}&email={email_param}"
@@ -122,3 +120,9 @@ def send_verification_email(to_email: str, token: str):
             "error": f"Failed to send verification email. {e}",
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
+
+
+@celery.task()
+@log_background_job("Send verification email")
+def send_email_task(to_email: str, token: str, job_id: int = None):
+    return send_verification_email(to_email, token)

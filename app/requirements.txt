@@ -4,7 +4,7 @@ langchain-openai
 python-dotenv
 pydantic
 pydantic[email]
-duckduckgo-search
+ddgs
 fastapi
 uvicorn
 redis
@@ -16,3 +16,4 @@ cryptography
 bcrypt==4.0.1
 passlib[bcrypt]==1.7.4
 pyjwt
+celery

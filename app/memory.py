@@ -1,17 +1,12 @@
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain.memory import ConversationBufferMemory
-from dotenv import load_dotenv
 from models_db import User, ChatHistory
 from fastapi import status
 from database import SessionLocal, redis_client, REDIS_URL, REDIS_EXPIRATION_SECONDS
 
-
 def clear_guest_memory():
     session_key = f"message_store:{0}"
     redis_client.delete(session_key)
-
-
-load_dotenv()
 
 
 def load_memory(user_id: int) -> ConversationBufferMemory:
@@ -74,16 +69,10 @@ def newUser_to_db(username, password, first_name, last_name, email, location):
         )
         session.add(new_user)
         session.commit()
-
+        session.refresh(new_user)
+        return new_user.id
     except Exception as e:
         session.rollback()
-        return {
-            "error": f"Failed to create new user: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
+        return None
     finally:
         session.close()
-        return {
-            "message": "New user created successfully",
-            "status": status.HTTP_201_CREATED,
-        }
