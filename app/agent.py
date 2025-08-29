@@ -2,11 +2,19 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain.tools import Tool
 from models import ResearchResponse
-from utils import search_tool, save_tool
 
 llm = ChatOpenAI(model="gpt-4o-mini")
 parser = PydanticOutputParser(pydantic_object=ResearchResponse)
+
+search = DuckDuckGoSearchRun()
+search_tool = Tool(
+    name="search",
+    func=search.run,
+    description="Search the web for information.",
+)
 
 prompt = ChatPromptTemplate.from_messages(
     [
@@ -35,7 +43,7 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 ).partial(format_instructions=parser.get_format_instructions())
 
-tools = [search_tool, save_tool]
+tools = [search_tool]
 
 
 def create_agent(memory):

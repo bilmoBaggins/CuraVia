@@ -1,4 +1,3 @@
-import jwt  # type: ignore
 from fastapi import APIRouter, status, Request, Body
 from models import (
     UserCreate,
@@ -6,50 +5,23 @@ from models import (
     ConversationCreate,
     QueryModel,
 )
-from models_db import User, ChatHistory, BackgroundJobs
-from memory import load_memory, history_to_db, newUser_to_db, clear_guest_memory
-from agent import create_agent, format_memory_to_string
-from database import SessionLocal
-from sqlalchemy import desc, func
-from sqlalchemy.orm.attributes import flag_modified
-from utils import (
-    save_to_txt,
-    save_to_cache,
-    SECRET_KEY,
-    create_access_token,
-    create_verification_token,
-    send_email_task,
+from controllers.query_controller import ask_question_logic
+from controllers.user_controller import (
+    signup_user_logic,
+    login_user_logic,
+    verify_email_logic,
+    send_verification_email_logic,
 )
-from datetime import datetime
-from passlib.context import CryptContext
-from typing import Any, Dict
+from controllers.conversation_controller import (
+    get_conversations_logic,
+    create_conversation_logic,
+    get_messages_logic,
+    get_closed_chats_logic,
+    add_closed_chat_logic,
+)
 
 
 router = APIRouter()
-
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def create_job(user_id: int, title: str, payload: Dict[str, Any]):
-    session = SessionLocal()
-    job = BackgroundJobs(
-        user_id=user_id, title=title, payload=payload, status="pending"
-    )
-    session.add(job)
-    session.commit()
-    session.refresh(job)
-    session.close()
-    return job
 
 
 @router.get("/")
@@ -59,381 +31,52 @@ def read_root():
 
 @router.post("/ask")
 async def ask_question(body: QueryModel):
-    if body.user_id == 0:
-        clear_guest_memory()
-    memory = load_memory(body.user_id)
-    agent_executor, parser = create_agent(memory)
-
-    # Format chat history string from memory for prompt input
-    chat_history_str = format_memory_to_string(memory)
-
-    raw_response = await agent_executor.ainvoke(
-        {"query": body.query, "chat_history": chat_history_str}
-    )
-
-    # Default output in case parsing fails
-    formatted_output = ""
-    try:
-        output_text = raw_response.get("output") or raw_response.get("output_text", "")
-        try:
-            structured_response = parser.parse(output_text)
-
-            formatted_output = structured_response.summary
-            if structured_response.symptoms:
-                formatted_output += "\n\nCommon symptoms:\n- " + "\n- ".join(
-                    structured_response.symptoms
-                )
-            if structured_response.do:
-                formatted_output += "\n\nDo's:\n- " + "\n- ".join(
-                    structured_response.do
-                )
-            if structured_response.dont:
-                formatted_output += "\n\nDon'ts:\n- " + "\n- ".join(
-                    structured_response.dont
-                )
-            if structured_response.gp:
-                formatted_output += "\n\nWhen to see a GP:\n- " + "\n- ".join(
-                    structured_response.gp
-                )
-            if structured_response.sources:
-                formatted_output += "\n\nSources:\n- " + "\n- ".join(
-                    structured_response.sources
-                )
-            if structured_response.assistance:
-                formatted_output += (
-                    f"\n\n--------------------\n\n{structured_response.assistance}"
-                )
-        except Exception:
-            # fallback if parsing fails
-            formatted_output = output_text.strip()
-
-    except Exception as e:
-        formatted_output = f"Error parsing response {e}\nRaw response: {raw_response}"
-
-    # Only save history if user_id is not 0 (guest)
-    if body.user_id != 0 and body.convo_id:
-        try:
-            history_to_db(
-                body.user_id,
-                body.convo_id,
-                body.query,
-                formatted_output,
-                datetime.now(),
-            )
-        except Exception as e:
-            return {
-                "error": f"Failed to save chat history: {e}",
-                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            }
-
-        try:
-            save_to_txt(formatted_output)
-        except Exception as e:
-            return {
-                "error": f"Failed to save response to text file: {e}",
-                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            }
-
-        try:
-            save_to_cache(formatted_output)
-        except Exception as e:
-            return {
-                "error": f"Failed to save response to cache: {e}",
-                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            }
-
-    return {"message": formatted_output, "status": status.HTTP_200_OK}
+    return await ask_question_logic(body)
 
 
 @router.post("/signup")
 async def signup_user(body: UserCreate):
-    session = SessionLocal()
-    try:
-
-        existing_user = (
-            session.query(User).filter(User.email == body.email).first()
-            or session.query(User).filter(User.username == body.username).first()
-        )
-        if existing_user:
-            return {
-                "error": "Username or email already used.",
-                "status": status.HTTP_409_CONFLICT,
-            }
-
-        # Hash the password before storing
-        hashed_password = hash_password(body.password)
-
-        user_id = newUser_to_db(
-            body.username,
-            hashed_password,
-            body.first_name,
-            body.last_name,
-            body.email,
-            body.location,
-        )
-
-        if not user_id:
-            return {
-                "error": "Failed to create new user.",
-                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            }
-
-        token = create_verification_token(body.email)
-        job = create_job(
-            user_id=user_id,
-            title="Send Verification Email",
-            payload={"email": body.email, "token": token},
-        )
-
-        # Queue the task in Celery and attach job_id
-        task = send_email_task.apply_async(
-            args=[body.email, token], kwargs={"job_id": job.id}
-        )
-
-        # Update job with Celery task_id
-        db = SessionLocal()
-        job_record = (
-            db.query(BackgroundJobs).filter(BackgroundJobs.id == job.id).first()
-        )
-        # Fix for possible None job_record
-        if job_record is not None:
-            job_record.task_id = task.id
-            db.commit()
-        db.close()
-
-        return {
-            "message": "User created successfully. "
-            "Please check your email to verify your account.",
-            "job_id": job.id,
-            "task_id": task.id,
-            "status": status.HTTP_201_CREATED,
-        }
-    except Exception as e:
-        return {
-            "error": f"Failed to create new user: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
-    finally:
-        session.close()
+    return await signup_user_logic(body)
 
 
 @router.post("/login")
 async def login_user(body: UserLogin):
-    session = SessionLocal()
-    try:
-        user = session.query(User).filter(User.username == body.username).first()
-        if not user:
-            return {
-                "error": "Invalid username or password.",
-                "status": status.HTTP_401_UNAUTHORIZED,
-            }
-        if not user.is_verified:
-            return {
-                "error": "Your account is not verified. "
-                "Please check your email and verify your account to log in.",
-                "resend_verification": True,
-                "email": user.email,
-                "status": status.HTTP_403_FORBIDDEN,
-            }
-        if verify_password(body.password, user.password):
-            access_token = create_access_token(
-                {"sub": user.username, "user_id": user.id}
-            )
-            return {
-                "message": "Login successful.",
-                "access_token": access_token,
-                "user": {
-                    "user_id": user.id,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "username": user.username,
-                    "is_verified": user.is_verified,
-                },
-                "status": status.HTTP_200_OK,
-            }
-        else:
-            return {
-                "error": "Invalid username or password.",
-                "status": status.HTTP_401_UNAUTHORIZED,
-            }
-    except Exception as e:
-        return {
-            "error": f"Login failed: {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
+    return await login_user_logic(body)
 
 
 @router.get("/verify")
-def verify_email(token: str):
-    session = SessionLocal()
-    try:
-        payload = jwt.decode(token, str(SECRET_KEY), algorithms="HS256")
-        email = payload["sub"]
-
-        # Find user and mark verified
-        user = session.query(User).filter(User.email == email).first()
-        if not user:
-            return {
-                "error": "User not found.",
-                "status": status.HTTP_404_NOT_FOUND,
-            }
-
-        if not user.is_verified:
-            user.is_verified = True
-            session.commit()
-            return {
-                "message": f"Email {email} has been verified!",
-                "status": status.HTTP_200_OK,
-            }
-        else:
-            return {
-                "message": f"Email {email} is already verified!",
-                "status": status.HTTP_200_OK,
-            }
-
-    except jwt.ExpiredSignatureError:
-        return {
-            "error": "Verification link expired.",
-            "status": status.HTTP_400_BAD_REQUEST,
-        }
-    except jwt.InvalidTokenError:
-        return {
-            "error": "Invalid verification token.",
-            "status": status.HTTP_400_BAD_REQUEST,
-        }
+async def verify_email(token: str):
+    return await verify_email_logic(token)
 
 
 # New endpoint to send verification email directly
 @router.post("/send-verification-email")
-async def send_verification_email_endpoint(request: Request):
-    data = await request.json()
-    email = data.get("email")
-    if not email:
-        return {"error": "Email is required.", "status": status.HTTP_400_BAD_REQUEST}
-    from utils import send_verification_email, create_verification_token
-
-    token = create_verification_token(email)
-    result = send_verification_email(email, token)
-    return result
+async def send_verification_email(request: Request):
+    return await send_verification_email_logic(request)
 
 
 @router.get("/conversations")
 async def get_conversations(user_id: int):
-    session = SessionLocal()
-    try:
-        convo_ids = (
-            session.query(
-                ChatHistory.convo_id, func.max(ChatHistory.timestamp).label("latest")
-            )
-            .filter(ChatHistory.user_id == user_id)
-            .group_by(ChatHistory.convo_id)
-            .order_by(desc("latest"))
-            .all()
-        )
-        conversations = []
-        for convo_id, _ in convo_ids:
-            msgs = (
-                session.query(ChatHistory)
-                .filter(
-                    ChatHistory.user_id == user_id, ChatHistory.convo_id == convo_id
-                )
-                .order_by(ChatHistory.timestamp)
-                .all()
-            )
-            # Build a summary prompt from all user and assistant messages
-            title = None
-            if not title:
-                if msgs:
-                    title = msgs[0].message[:30]
-                else:
-                    max_convo = (
-                        session.query(ChatHistory.convo_id)
-                        .filter(ChatHistory.user_id == user_id)
-                        .order_by(desc(ChatHistory.convo_id))
-                        .first()
-                    )
-                    convo_id = (max_convo.convo_id + 1) if max_convo else 1
-                    title = f"Chat {convo_id}"
-            conversations.append({"id": convo_id, "title": title})
-        return conversations
-    finally:
-        session.close()
+    return await get_conversations_logic(user_id)
 
 
 @router.post("/conversations")
 async def create_conversation(body: ConversationCreate):
-    user_id = body.user_id
-    session = SessionLocal()
-    try:
-        # Find max convo_id for user, increment
-        max_convo = (
-            session.query(ChatHistory.convo_id)
-            .filter(ChatHistory.user_id == user_id)
-            .order_by(desc(ChatHistory.convo_id))
-            .first()
-        )
-        new_convo_id = (max_convo.convo_id + 1) if max_convo else 1
-
-        return {
-            "message": f"New conversation created with ID: {new_convo_id}",
-            "status": status.HTTP_201_CREATED,
-        }
-    finally:
-        session.close()
+    return await create_conversation_logic(body)
 
 
 @router.get("/messages")
 async def get_messages(conversation_id: int, user_id: int):
-    session = SessionLocal()
-    try:
-        messages = (
-            session.query(ChatHistory)
-            .filter(
-                ChatHistory.convo_id == conversation_id, ChatHistory.user_id == user_id
-            )
-            .order_by(ChatHistory.timestamp)
-            .all()
-        )
-        return [
-            {"sender": m.sender, "text": m.message, "timestamp": m.timestamp}
-            for m in messages
-        ]
-    finally:
-        session.close()
+    return await get_messages_logic(conversation_id, user_id)
 
 
 # Get closedChats for a user
 @router.get("/users/{user_id}/closed_chats")
 async def get_closed_chats(user_id: int):
-    session = SessionLocal()
-    try:
-        user = session.query(User).filter(User.id == user_id).first()
-        if not user:
-            return []
-        return user.closedChats if user.closedChats else []
-    finally:
-        session.close()
+    return await get_closed_chats_logic(user_id)
 
 
 # Add a convo_id to closedChats for a user
 @router.post("/users/{user_id}/closed_chats")
 async def add_closed_chat(user_id: int, data: dict = Body(...)):
-    session = SessionLocal()
-    try:
-        user = session.query(User).filter(User.id == user_id).first()
-        if not user:
-            return {"error": "User not found", "status": status.HTTP_404_NOT_FOUND}
-        convo_id = data.get("convo_id")
-        if convo_id is None:
-            return {"error": "Missing convo_id", "status": status.HTTP_400_BAD_REQUEST}
-        closed = user.closedChats if user.closedChats else []
-        print(closed)
-        if convo_id not in closed:
-            closed.append(convo_id)
-            print(closed)
-            user.closedChats = closed
-            flag_modified(user, "closedChats")
-            session.commit()
-        return {"closedChats": user.closedChats, "status": status.HTTP_200_OK}
-    finally:
-        session.close()
+    return await add_closed_chat_logic(user_id, data)
