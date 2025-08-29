@@ -111,15 +111,73 @@ def send_verification_email(to_email: str, token: str):
     subject = "Verify Your CuraVia Email"
     html = f"""
     <html>
-      <body>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+        body {{
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        h2 {{
+            color: #333333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }}
+        p {{
+            color: #555555;
+            font-size: 16px;
+            line-height: 1.5;
+        }}
+        .button {{
+            display: inline-block;
+            background-color: #007BFF;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }}
+        @media screen and (max-width: 600px) {{
+            .container {{
+            padding: 20px;
+            margin: 10px;
+            }}
+            h2 {{
+            font-size: 20px;
+            }}
+            p {{
+            font-size: 15px;
+            }}
+            .button {{
+            padding: 12px 24px;
+            }}
+        }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+        <h2>Welcome to CuraVia!</h2>
         <p>Hi,<br><br>
-           Please verify your email by clicking the link below:<br>
-           <a href="{verification_link}">Verify Email</a><br><br>
-           If you did not sign up, you can ignore this email.<br><br>
-           Thanks,<br>
-           CuraVia Team
+            Please verify your email address by clicking the button below:
         </p>
-      </body>
+        <p style="text-align:center;">
+            <a href="{verification_link}" class="button">Verify Email</a>
+        </p>
+        <p>If you did not sign up for CuraVia, you can safely ignore this email.</p>
+        <p>Thanks,<br>The CuraVia Team</p>
+        </div>
+    </body>
     </html>
     """
 

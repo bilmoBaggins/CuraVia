@@ -4,6 +4,7 @@ from models_db import User, ChatHistory
 from fastapi import status
 from database import SessionLocal, redis_client, REDIS_URL, REDIS_EXPIRATION_SECONDS
 from typing import cast
+import json
 
 
 def clear_guest_memory():
@@ -79,3 +80,9 @@ def newUser_to_db(username, password, first_name, last_name, email, location):
         return None
     finally:
         session.close()
+
+
+def save_chat_history(user_id: int, messages: list):
+    session_key = f"message_store:{user_id}"
+    redis_client.set(session_key, json.dumps(messages))
+    redis_client.expire(session_key, REDIS_EXPIRATION_SECONDS)
