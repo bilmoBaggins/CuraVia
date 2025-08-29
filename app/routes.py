@@ -179,7 +179,6 @@ async def signup_user(body: UserCreate):
             }
 
         token = create_verification_token(body.email)
-        user_id = 1
         job = create_job(
             user_id=user_id,
             title="Send Verification Email",

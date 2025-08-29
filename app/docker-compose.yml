@@ -15,6 +15,11 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7
@@ -61,7 +66,7 @@ services:
   alembic:
     build: .
     container_name: alembic
-    command: alembic upgrade head
+    command: ./wait-for-mysql.sh
     volumes:
       - .:/app
     depends_on:
