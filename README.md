@@ -6,11 +6,15 @@
 **All terminal commands should be run in the *app* folder**\
 Create and activate a virtual environment, then install all the required packages
 
-```sh
+```bash
 python -m venv venv
 .\venv\Scripts\activate
-notepad $env:USERPROFILE\.docker\config.json # to open notepad, then delete the line ""credsStore": "desktop"" and save
-docker-compose up --build # to install all dependencies and run the program
+
+# to open the config file in notepad
+notepad $env:USERPROFILE\.docker\config.json  # delete the line ""credsStore": "desktop"" and save
+
+# to install all dependencies and run the program
+docker-compose up --build
 ```
 Whenever a new dependency is added to requirements.txt the build command must be run again.
 
@@ -18,16 +22,21 @@ Whenever a new dependency is added to requirements.txt the build command must be
 - Open docker from your start menu
 - Make sure it is running by checking for a whale icon in your system tray
 
-```sh
-docker compose up -d # to start redis, fastapi and mysql in docker
+```bash
+# to start redis, fastapi and mysql in docker
+docker compose up -d
 
-docker ps -a # to view all running containers
+# to view all running containers
+docker ps -a
 ```
 
-Automatically create db, and users and chat_history tables for the first time
-```sh
-docker compose run --rm fastapi alembic revision --autogenerate -m "create users, chat_history and background_jobs tables" # to create a new migration
-docker compose run --rm fastapi alembic upgrade head # to update pending migrations
+Automatically create db, and users, chat_history and background_jobs tables for the first time
+```bash
+# to create a new migration
+docker compose run --rm fastapi alembic revision --autogenerate -m "create users, chat_history and background_jobs tables"
+
+# to update pending migrations
+docker compose run --rm fastapi alembic upgrade head
 ```
 
 #
@@ -35,8 +44,9 @@ docker compose run --rm fastapi alembic upgrade head # to update pending migrati
 
 ### To quit program
 
-```sh
-docker compose down # to stop docker
+```bash
+# to stop docker
+docker compose down
 ```
 
 #
@@ -44,8 +54,7 @@ docker compose down # to stop docker
 
 ### To start after initial set up
 
-
-```sh
+```bash
 docker compose up -d
 docker compose run --rm fastapi alembic upgrade head
 ```
@@ -53,9 +62,26 @@ docker compose run --rm fastapi alembic upgrade head
 #
 
 
+### Redis commands
+
+```bash
+# to clear redis
+docker compose up -d
+docker exec redis_service redis-cli FLUSHALL
+
+# to view all items in redis
+docker exec redis_service redis-cli KEYS '*'
+
+# to view a specific item where '<key>' is the actual key name
+docker exec redis_service redis-cli GET <key>
+```
+
+#
+
+
 ### To use test seeder data
 
-```sh
+```bash
 docker compose run --rm fastapi python seed/seed.py
 ```
 Then go to your db and refresh to see the data.
@@ -66,28 +92,16 @@ Then go to your db and refresh to see the data.
 ### To quality check locally
 
 Install required packages
-```sh
+```bash
 pip install black flake8 mypy
 ```
 
-To check for formatting errors
-```sh
+Check for formatting errors
+```bash
 black --check; flake8 --check; mypy --check
 ```
 
-To fix formatting errors
-```sh
+Fix formatting errors
+```bash
 flake8 .; black .; mypy .
 ```
-
-# Production command
-
-first time setup needed manually run 
-``` 
-docker compose run --rm fastapi alembic revision --autogenerate -m "init"
-```
-Then any changes after this must run below
-```
-docker compose run --rm fastapi alembic upgrade head
-```
-
