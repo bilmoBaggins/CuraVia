@@ -48,21 +48,6 @@ services:
       - .env
     networks:
       - app_network
-
-  celery:
-    build: .
-    container_name: celery_worker
-    command: celery -A controllers.user_controller worker --loglevel=info
-    volumes:
-      - .:/app
-    depends_on:
-      - redis
-      - fastapi
-    env_file:
-      - .env
-    networks:
-      - app_network
-
   alembic:
     build: .
     container_name: alembic
@@ -77,6 +62,19 @@ services:
       - .env
     networks:
       - app_network
+  celery:
+    build: .
+    container_name: celery_worker
+    command: celery -A controllers.user_controller worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - fastapi
+    env_file:
+      - .env
+    networks:
+      - app_network
 
 volumes:
   mysql_data:
@@ -85,3 +83,4 @@ volumes:
 networks:
   app_network:
     driver: bridge
+
