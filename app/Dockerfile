@@ -16,7 +16,7 @@ COPY . .
 # Expose the port FastAPI will run on
 EXPOSE 8000
 
-# Add a non-root user
+# Add a non-root user to run the application
 RUN useradd --create-home celeryuser
 USER celeryuser
 
