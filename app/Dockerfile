@@ -20,5 +20,7 @@ EXPOSE 8000
 RUN useradd --create-home celeryuser
 USER celeryuser
 
+RUN chmod +x /app/wait-for-mysql.sh
+
 # Command to run FastAPI app (adjust main:app if your entrypoint is different)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
