@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y mariadb-client
 
 # Copy the rest of your application code
 COPY . .
+COPY wait-for-mysql.sh .
+RUN chmod +x wait-for-mysql.sh
 
 # Expose the port FastAPI will run on
 EXPOSE 8000
