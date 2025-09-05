@@ -12,14 +12,12 @@ RUN apt-get update && apt-get install -y mariadb-client
 
 # Copy the rest of your application code
 COPY . .
-COPY wait-for-mysql.sh .
-RUN chmod +x wait-for-mysql.sh
+RUN chmod 755 wait-for-mysql.sh
 
 # Expose the port FastAPI will run on
 EXPOSE 8000
 
 # Add a non-root user to run the application
-RUN chmod +x ./wait-for-mysql.sh
 RUN useradd --create-home celeryuser
 USER celeryuser
 
