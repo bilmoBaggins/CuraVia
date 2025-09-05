@@ -51,7 +51,7 @@ services:
   alembic:
     build: .
     container_name: alembic
-    command: ./wait-for-mysql.sh
+    command: ["/bin/bash", "./wait-for-mysql.sh"]
     volumes:
       - .:/app
     depends_on:
