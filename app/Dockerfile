@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y mariadb-client
 COPY . .
 RUN chmod 755 /app/wait-for-mysql.sh
 
-# Expose the port FastAPI will run on
+# Expose the port FastAPI will run on (usually 8000)
 EXPOSE 8000
 
 # Add a non-root user to run the application
