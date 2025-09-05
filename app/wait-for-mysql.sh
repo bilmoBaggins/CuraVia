@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 set -e
 MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-}
 
