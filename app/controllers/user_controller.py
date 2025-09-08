@@ -91,7 +91,7 @@ def create_verification_token(email: str):
     return jwt.encode(payload, str(SECRET_KEY), algorithm="HS256")
 
 
-def send_verification_email(to_email: str, token: str):
+def send_verification_email(to_email: str, token: str, job_id: Optional[int] = None):
     # Encode email for URL safety
     email_param = quote(to_email)
     verification_link = f"{FRONTEND_URL}/verify?token={token}&email={email_param}"
@@ -176,15 +176,32 @@ def send_verification_email(to_email: str, token: str):
     message.attach(MIMEText(html, "html"))
 
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
             server.login(SMTP_USER, SMTP_PASS)
             server.sendmail(SMTP_USER, to_email, message.as_string())
+        # Update background_jobs table with success if job_id is provided
+        if job_id is not None:
+            db = SessionLocal()
+            job_record = db.query(BackgroundJobs).filter(BackgroundJobs.id == job_id).first()
+            if job_record is not None:
+                job_record.status = "success"
+                job_record.error = None
+                db.commit()
+            db.close()
         return {
             "message": "Verification email sent successfully.",
             "status": status.HTTP_200_OK,
         }
     except Exception as e:
+        # Update background_jobs table with error if job_id is provided
+        if job_id is not None:
+            db = SessionLocal()
+            job_record = db.query(BackgroundJobs).filter(BackgroundJobs.id == job_id).first()
+            if job_record is not None:
+                job_record.status = "failed"
+                job_record.error = str(e)
+                db.commit()
+            db.close()
         return {
             "error": f"Failed to send verification email. {e}",
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -194,7 +211,7 @@ def send_verification_email(to_email: str, token: str):
 @celery.task()
 @log_background_job("Send verification email")
 def send_email_task(to_email: str, token: str, job_id: Optional[int] = None):
-    return send_verification_email(to_email, token)
+    return send_verification_email(to_email, token, job_id=job_id)
 
 
 async def signup_user_logic(body):
