@@ -7,3 +7,4 @@ latest_response.txt
 user_memories/
 .mypy_cache/
 .vscode/
+celerybeat-schedule

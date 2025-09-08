@@ -1,6 +1,9 @@
 import os
+
+from requests import session
 import jwt  # type: ignore
 import smtplib
+import bcrypt
 from fastapi import status
 from models_db import User, BackgroundJobs
 from memory import newUser_to_db
@@ -181,6 +184,102 @@ def send_verification_email(to_email: str, token: str, username: str, job_id: Op
             server.sendmail(SMTP_USER, to_email, message.as_string())
         return {
             "message": "Verification email sent successfully.",
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        raise
+
+
+def send_reset_password_email(to_email: str, token: str, username: str, job_id: int = None):
+    email_param = quote(to_email)
+    reset_link = f"{FRONTEND_URL}/reset-password?token={token}&email={email_param}"
+
+    subject = "Reset Your CuraVia Password"
+    html = f"""
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+        body {{
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        h2 {{
+            color: #333333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }}
+        p {{
+            color: #555555;
+            font-size: 16px;
+            line-height: 1.5;
+        }}
+        .button {{
+            display: inline-block;
+            background-color: #007BFF;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }}
+        @media screen and (max-width: 600px) {{
+            .container {{
+            padding: 20px;
+            margin: 10px;
+            }}
+            h2 {{
+            font-size: 20px;
+            }}
+            p {{
+            font-size: 15px;
+            }}
+            .button {{
+            padding: 12px 24px;
+            }}
+        }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+        <h2>Reset Your Password</h2>
+        <p>Hi {username},<br><br>
+            Please reset your password by clicking the button below:
+        </p>
+        <p style="text-align:center;">
+            <a href="{reset_link}" class="button">Reset Password</a>
+        </p>
+        <p>If you did not request a password reset it is advisable to change it to avoid unauthorized access.</p>
+        <p>Thanks,<br>The CuraVia Team</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = subject
+    message["From"] = SMTP_USER
+    message["To"] = to_email
+    message.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_USER, to_email, message.as_string())
+        return {
+            "message": "Reset password email sent successfully.",
             "status": status.HTTP_200_OK,
         }
     except Exception as e:
@@ -407,16 +506,111 @@ async def resend_verification_email_logic(body):
         session.close()
 
 
-@celery.task()
-@log_background_job("Send verification email")
-def send_email_task(to_email: str, token: str, username: str, job_id: Optional[int] = None):
-    return send_verification_email(to_email, token, username)
+async def forgot_password_logic(request):
+    data = await request.json()
+    username = data.get("username")
+    if not username:
+        return {"error": "Username is required.", "status": status.HTTP_400_BAD_REQUEST}
+
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.username == username).first()
+        if not user:
+            session.close()
+            return {"error": "User not found.", "status": status.HTTP_404_NOT_FOUND}
+        email = user.email
+
+        # Create a reset token (valid for 1 hour)
+        payload = {
+            "sub": username,
+            "exp": datetime.now() + timedelta(hours=1),
+            "action": "reset_password"
+        }
+        token = jwt.encode(payload, str(SECRET_KEY), algorithm="HS256")
+        job = create_job(
+            user_id=user.id,
+            title="Reset Password Email",
+            payload={"email": email, "token": token, "username": username},
+        )
+
+        # Queue the task in Celery and attach job_id
+        task = send_reset_password_task.apply_async(
+            args=[email, token, username], kwargs={"job_id": job.id}
+        )
+
+        # Update job with Celery task_id
+        db = SessionLocal()
+        job_record = (
+            db.query(BackgroundJobs).filter(BackgroundJobs.id == job.id).first()
+        )
+        # Fix for possible None job_record
+        if job_record is not None:
+            job_record.task_id = task.id
+            db.commit()
+        db.close()
+
+        return {
+            "message": "Reset password email resent. Please check your email.",
+            "job_id": job.id,
+            "task_id": task.id,
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        return {
+        "error": f"Failed to resend reset password email: {e}",
+        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+    }
+    finally:
+        session.close()
+
+
+
+async def reset_password_logic(request):
+    data = await request.json()
+    token = data.get("token")
+    new_password = data.get("password")
+    if not token or not new_password:
+        return {"error": "Token and new password required.", "status": status.HTTP_400_BAD_REQUEST}
+
+    try:
+        payload = jwt.decode(token, str(SECRET_KEY), algorithms=["HS256"])
+        username = payload["sub"]
+        if payload.get("action") != "reset_password":
+            return {"error": "Invalid token action.", "status": status.HTTP_400_BAD_REQUEST}
+    except Exception as e:
+        return {"error": str(e), "status": status.HTTP_400_BAD_REQUEST}
+
+    session = SessionLocal()
+    user = session.query(User).filter(User.username == username).first()
+    if not user:
+        session.close()
+        return {"error": "User not found.", "status": status.HTTP_404_NOT_FOUND}
+
+    # Hash the new password
+    hashed_pw = pwd_context.hash(new_password)
+    user.password = hashed_pw
+    session.commit()
+    session.close()
+
+    return {"message": "Password reset successful!", "status": status.HTTP_200_OK}
 
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     # Calls clear_redis_every_hour every hour
     sender.add_periodic_task(3600.0, clear_redis_every_hour.s(), name="Clear Redis hourly")
+
+
+@celery.task()
+@log_background_job("Send verification email")
+def send_email_task(to_email: str, token: str, username: str, job_id: Optional[int] = None):
+    return send_verification_email(to_email, token, username)
+
+
+@celery.task()
+@log_background_job("Send reset password email")
+def send_reset_password_task(to_email: str, token: str, username: str, job_id: Optional[int] = None):
+    return send_reset_password_email(to_email, token, username)
 
 
 @celery.task

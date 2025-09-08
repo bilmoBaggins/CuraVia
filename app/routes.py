@@ -13,6 +13,8 @@ from controllers.user_controller import (
     verify_email_logic,
     send_verification_email_logic,
     resend_verification_email_logic,
+    forgot_password_logic,
+    reset_password_logic,
 )
 from controllers.conversation_controller import (
     get_conversations_logic,
@@ -87,3 +89,13 @@ async def get_closed_chats(user_id: int):
 @router.post("/users/{user_id}/closed_chats")
 async def add_closed_chat(user_id: int, data: dict = Body(...)):
     return await add_closed_chat_logic(user_id, data)
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: Request):
+    return await forgot_password_logic(request)
+
+
+@router.post("/reset-password")
+async def reset_password(request: Request):
+    return await reset_password_logic(request)
