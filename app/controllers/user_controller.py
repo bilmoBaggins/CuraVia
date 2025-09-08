@@ -1,9 +1,7 @@
 import os
 
-from requests import session
 import jwt  # type: ignore
 import smtplib
-import bcrypt
 from fastapi import status
 from models_db import User, BackgroundJobs
 from memory import newUser_to_db
@@ -94,7 +92,9 @@ def create_verification_token(email: str):
     return jwt.encode(payload, str(SECRET_KEY), algorithm="HS256")
 
 
-def send_verification_email(to_email: str, token: str, username: str, job_id: Optional[int] = None):
+def send_verification_email(
+    to_email: str, token: str, username: str, job_id: Optional[int] = None
+):
     # Encode email for URL safety
     email_param = quote(to_email)
     verification_link = f"{FRONTEND_URL}/verify?token={token}&email={email_param}"
@@ -191,7 +191,9 @@ def send_verification_email(to_email: str, token: str, username: str, job_id: Op
         raise
 
 
-def send_reset_password_email(to_email: str, token: str, username: str, job_id: int = None):
+def send_reset_password_email(
+    to_email: str, token: str, username: str, job_id: Optional[int] = None
+):
     email_param = quote(to_email)
     reset_link = f"{FRONTEND_URL}/reset-password?token={token}&email={email_param}"
 
@@ -261,7 +263,8 @@ def send_reset_password_email(to_email: str, token: str, username: str, job_id: 
         <p style="text-align:center;">
             <a href="{reset_link}" class="button">Reset Password</a>
         </p>
-        <p>If you did not request a password reset it is advisable to change it to avoid unauthorized access.</p>
+        <p>If you did not request a password reset it is advisable to change
+        it to avoid unauthorized access.</p>
         <p>Thanks,<br>The CuraVia Team</p>
         </div>
     </body>
@@ -446,7 +449,10 @@ async def send_verification_email_logic(request):
     email = data.get("email")
     username = data.get("username")
     if not email or not username:
-        return {"error": "Email and username are required.", "status": status.HTTP_400_BAD_REQUEST}
+        return {
+            "error": "Email and username are required.",
+            "status": status.HTTP_400_BAD_REQUEST,
+        }
 
     token = create_verification_token(email)
     result = send_verification_email(email, token, username)
@@ -524,7 +530,7 @@ async def forgot_password_logic(request):
         payload = {
             "sub": username,
             "exp": datetime.now() + timedelta(hours=1),
-            "action": "reset_password"
+            "action": "reset_password",
         }
         token = jwt.encode(payload, str(SECRET_KEY), algorithm="HS256")
         job = create_job(
@@ -557,12 +563,11 @@ async def forgot_password_logic(request):
         }
     except Exception as e:
         return {
-        "error": f"Failed to resend reset password email: {e}",
-        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-    }
+            "error": f"Failed to resend reset password email: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
     finally:
         session.close()
-
 
 
 async def reset_password_logic(request):
@@ -570,13 +575,19 @@ async def reset_password_logic(request):
     token = data.get("token")
     new_password = data.get("password")
     if not token or not new_password:
-        return {"error": "Token and new password required.", "status": status.HTTP_400_BAD_REQUEST}
+        return {
+            "error": "Token and new password required.",
+            "status": status.HTTP_400_BAD_REQUEST,
+        }
 
     try:
         payload = jwt.decode(token, str(SECRET_KEY), algorithms=["HS256"])
         username = payload["sub"]
         if payload.get("action") != "reset_password":
-            return {"error": "Invalid token action.", "status": status.HTTP_400_BAD_REQUEST}
+            return {
+                "error": "Invalid token action.",
+                "status": status.HTTP_400_BAD_REQUEST,
+            }
     except Exception as e:
         return {"error": str(e), "status": status.HTTP_400_BAD_REQUEST}
 
@@ -598,18 +609,24 @@ async def reset_password_logic(request):
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     # Calls clear_redis_every_hour every hour
-    sender.add_periodic_task(3600.0, clear_redis_every_hour.s(), name="Clear Redis hourly")
+    sender.add_periodic_task(
+        3600.0, clear_redis_every_hour.s(), name="Clear Redis hourly"
+    )
 
 
 @celery.task()
 @log_background_job("Send verification email")
-def send_email_task(to_email: str, token: str, username: str, job_id: Optional[int] = None):
+def send_email_task(
+    to_email: str, token: str, username: str, job_id: Optional[int] = None
+):
     return send_verification_email(to_email, token, username)
 
 
 @celery.task()
 @log_background_job("Send reset password email")
-def send_reset_password_task(to_email: str, token: str, username: str, job_id: Optional[int] = None):
+def send_reset_password_task(
+    to_email: str, token: str, username: str, job_id: Optional[int] = None
+):
     return send_reset_password_email(to_email, token, username)
 
 
