@@ -35,6 +35,7 @@ class UserLogin(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
+    username: str
 
 
 # Model for creating a conversation

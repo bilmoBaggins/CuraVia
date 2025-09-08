@@ -4,6 +4,7 @@ from models import (
     UserLogin,
     ConversationCreate,
     QueryModel,
+    ResendVerificationRequest,
 )
 from controllers.query_controller import ask_question_logic
 from controllers.user_controller import (
@@ -11,6 +12,7 @@ from controllers.user_controller import (
     login_user_logic,
     verify_email_logic,
     send_verification_email_logic,
+    resend_verification_email_logic,
 )
 from controllers.conversation_controller import (
     get_conversations_logic,
@@ -53,6 +55,11 @@ async def verify_email(token: str):
 @router.post("/send-verification-email")
 async def send_verification_email(request: Request):
     return await send_verification_email_logic(request)
+
+
+@router.post("/resend-verification-email")
+async def resend_verification_email(body: ResendVerificationRequest):
+    return await resend_verification_email_logic(body)
 
 
 @router.get("/conversations")

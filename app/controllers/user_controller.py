@@ -4,7 +4,7 @@ import smtplib
 from fastapi import status
 from models_db import User, BackgroundJobs
 from memory import newUser_to_db
-from database import SessionLocal
+from database import SessionLocal, redis_client
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
@@ -91,7 +91,7 @@ def create_verification_token(email: str):
     return jwt.encode(payload, str(SECRET_KEY), algorithm="HS256")
 
 
-def send_verification_email(to_email: str, token: str, job_id: Optional[int] = None):
+def send_verification_email(to_email: str, token: str, username: str, job_id: Optional[int] = None):
     # Encode email for URL safety
     email_param = quote(to_email)
     verification_link = f"{FRONTEND_URL}/verify?token={token}&email={email_param}"
@@ -156,7 +156,7 @@ def send_verification_email(to_email: str, token: str, job_id: Optional[int] = N
     <body>
         <div class="container">
         <h2>Welcome to CuraVia!</h2>
-        <p>Hi,<br><br>
+        <p>Hi {username},<br><br>
             Please verify your email address by clicking the button below:
         </p>
         <p style="text-align:center;">
@@ -179,45 +179,18 @@ def send_verification_email(to_email: str, token: str, job_id: Optional[int] = N
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
             server.login(SMTP_USER, SMTP_PASS)
             server.sendmail(SMTP_USER, to_email, message.as_string())
-        # Update background_jobs table with success if job_id is provided
-        if job_id is not None:
-            db = SessionLocal()
-            job_record = db.query(BackgroundJobs).filter(BackgroundJobs.id == job_id).first()
-            if job_record is not None:
-                job_record.status = "success"
-                job_record.error = None
-                db.commit()
-            db.close()
         return {
             "message": "Verification email sent successfully.",
             "status": status.HTTP_200_OK,
         }
     except Exception as e:
-        # Update background_jobs table with error if job_id is provided
-        if job_id is not None:
-            db = SessionLocal()
-            job_record = db.query(BackgroundJobs).filter(BackgroundJobs.id == job_id).first()
-            if job_record is not None:
-                job_record.status = "failed"
-                job_record.error = str(e)
-                db.commit()
-            db.close()
-        return {
-            "error": f"Failed to send verification email. {e}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
-
-
-@celery.task()
-@log_background_job("Send verification email")
-def send_email_task(to_email: str, token: str, job_id: Optional[int] = None):
-    return send_verification_email(to_email, token, job_id=job_id)
+        print(f"Error sending email: {e}")
+        raise
 
 
 async def signup_user_logic(body):
     session = SessionLocal()
     try:
-
         existing_user = (
             session.query(User).filter(User.email == body.email).first()
             or session.query(User).filter(User.username == body.username).first()
@@ -250,12 +223,12 @@ async def signup_user_logic(body):
         job = create_job(
             user_id=user_id,
             title="Send Verification Email",
-            payload={"email": body.email, "token": token},
+            payload={"email": body.email, "token": token, "username": body.username},
         )
 
         # Queue the task in Celery and attach job_id
         task = send_email_task.apply_async(
-            args=[body.email, token], kwargs={"job_id": job.id}
+            args=[body.email, token, body.username], kwargs={"job_id": job.id}
         )
 
         # Update job with Celery task_id
@@ -372,9 +345,81 @@ async def verify_email_logic(token):
 async def send_verification_email_logic(request):
     data = await request.json()
     email = data.get("email")
-    if not email:
-        return {"error": "Email is required.", "status": status.HTTP_400_BAD_REQUEST}
+    username = data.get("username")
+    if not email or not username:
+        return {"error": "Email and username are required.", "status": status.HTTP_400_BAD_REQUEST}
 
     token = create_verification_token(email)
-    result = send_verification_email(email, token)
+    result = send_verification_email(email, token, username)
     return result
+
+
+async def resend_verification_email_logic(body):
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.email == body.email).first()
+        if not user:
+            return {
+                "error": "Email not found.",
+                "status": status.HTTP_404_NOT_FOUND,
+            }
+        if user.is_verified:
+            return {
+                "message": "Email is already verified.",
+                "status": status.HTTP_200_OK,
+            }
+
+        token = create_verification_token(body.email)
+        job = create_job(
+            user_id=user.id,
+            title="Resend Verification Email",
+            payload={"email": body.email, "token": token, "username": body.username},
+        )
+
+        # Queue the task in Celery and attach job_id
+        task = send_email_task.apply_async(
+            args=[body.email, token, body.username], kwargs={"job_id": job.id}
+        )
+
+        # Update job with Celery task_id
+        db = SessionLocal()
+        job_record = (
+            db.query(BackgroundJobs).filter(BackgroundJobs.id == job.id).first()
+        )
+        # Fix for possible None job_record
+        if job_record is not None:
+            job_record.task_id = task.id
+            db.commit()
+        db.close()
+
+        return {
+            "message": "Verification email resent. Please check your email.",
+            "job_id": job.id,
+            "task_id": task.id,
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        return {
+            "error": f"Failed to resend verification email: {e}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+    finally:
+        session.close()
+
+
+@celery.task()
+@log_background_job("Send verification email")
+def send_email_task(to_email: str, token: str, username: str, job_id: Optional[int] = None):
+    return send_verification_email(to_email, token, username)
+
+
+@celery.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    # Calls clear_redis_every_hour every hour
+    sender.add_periodic_task(3600.0, clear_redis_every_hour.s(), name="Clear Redis hourly")
+
+
+@celery.task
+def clear_redis_every_hour():
+    redis_client.flushall()
+    print("Redis cleared by Celery task.")

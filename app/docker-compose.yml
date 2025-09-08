@@ -36,7 +36,7 @@ services:
   fastapi:
     build: .
     container_name: fastapi_service
-    command: "uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+    command: "uvicorn main:app --host 0.0.0.0 --port 8000"
     volumes:
       - .:/app
     ports:
@@ -65,7 +65,7 @@ services:
   celery:
     build: .
     container_name: celery_worker
-    command: celery -A controllers.user_controller worker --loglevel=info
+    command: celery -A controllers.user_controller.celery worker --beat --loglevel=info
     volumes:
       - .:/app
     depends_on:
