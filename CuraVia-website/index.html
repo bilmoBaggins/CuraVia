@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Curavia - Home</title>
+  <link href="https://fonts.googleapis.com/css?family=Lexend:400,700|Noto+Sans:400,700&display=swap" rel="stylesheet"/>
+  <style>
+    body {
+      font-family: 'Lexend', 'Noto Sans', sans-serif;
+      background: #fff;
+      margin: 0;
+      min-height: 100vh;
+      font-size: 16px;
+    }
+    .layout-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      justify-content: space-between; /* logo left, buttons right */
+      align-items: center;
+      border-bottom: 1px solid #f0f3f4;
+      padding: 1rem 2rem;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo img {
+      height: 32px; /* bigger logo */
+      max-width: 80vw;
+    }
+    .logo h2 {
+      font-size: 1.4rem; /* bigger text */
+      font-weight: bold;
+      color: #111618;
+    }
+    nav.header-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    nav.header-buttons a {
+      font-size: 0.9rem;   /* smaller text */
+      color: #111618;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 0.4rem 1rem; /* smaller buttons */
+      border: none;
+      background: none;
+      display: inline-block;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+    nav.header-buttons a.signup {
+      background: #30bae8;
+      color: #111618;
+      font-weight: bold;
+    }
+    nav.header-buttons a:hover {
+      background: #e2e8f0;
+    }
+    nav.header-buttons a.signup:hover {
+      background: #25a9d4;
+    }
+    .main-content {
+      display: flex;
+      justify-content: center;
+      padding: 1rem 0.5rem;
+    }
+    .content-container {
+      max-width: 960px;
+      width: 100%;
+    }
+    .centered {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    .bubble-img {
+      width: 80px;
+      max-width: 60vw;
+      margin-bottom: 1rem;
+      height: auto;
+    }
+    .welcome-box {
+      background: #e5e7eb;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      padding: 1.2rem;
+      max-width: 480px;
+      text-align: center;
+      margin-left: 1rem;
+      margin-right: 1rem;
+    }
+    .welcome-box h1 {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #111618;
+      margin-bottom: 0.5rem;
+    }
+    .welcome-box h2 {
+      font-size: 1rem;
+      color: #111618;
+      margin-bottom: 1.2rem;
+    }
+    .welcome-box .ask-btn {
+      background: #30bae8;
+      color: #111618;
+      font-weight: bold;
+      border-radius: 12px;
+      padding: 0.7rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      display: inline-block;
+      text-decoration: none;
+    }
+    .welcome-box .ask-btn:hover {
+      background: #25a9d4;
+    }
+    @media (min-width: 480px) {
+      .logo img { height: 36px; }
+      .logo h2 { font-size: 1.5rem; }
+      .bubble-img { width: 100px; }
+      .welcome-box { padding: 2rem; }
+      .welcome-box h1 { font-size: 1.8rem; }
+    }
+    @media (min-width: 768px) {
+      .main-content { padding: 2rem 10rem; }
+      .bubble-img { width: 200px; }
+      .welcome-box { padding: 3rem; }
+      .welcome-box h1 { font-size: 2.2rem; }
+      .welcome-box h2 { font-size: 1.125rem; }
+    }
+    @media (min-width: 1024px) {
+      .bubble-img { width: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-container">
+    <header>
+      <div class="logo">
+        <img src="assets/3.png" alt="Curavia Logo" />
+        <h2>Curavia</h2>
+      </div>
+      <nav class="header-buttons">
+        <a href="https://ai.curaviachat.com/login">Login</a>
+        <a href="https://ai.curaviachat.com/signup" class="signup">Sign up</a>
+      </nav>
+    </header>
+    <div class="main-content">
+      <div class="content-container">
+        <div class="centered">
+          <img src="assets/1.png" alt="Bubble Image" class="bubble-img" />
+          <div class="welcome-box">
+            <h1>Welcome to Curavia</h1>
+            <h2>Your personal AI health assistant. Get instant answers to your health questions and personalized advice.</h2>
+            <a class="ask-btn" href="https://ai.curaviachat.com/main">Ask a Question</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
