@@ -1,0 +1,12 @@
+[submodule "backend"]
+	path = backend
+	url = https://github.com/bilmoBaggins/CuraVia.git
+	branch = main
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/curavia/Curavia-frontend.git
+	branch = main
+[submodule "website"]
+	path = website
+	url = https://github.com/curavia/CuraVia-website.git
+	branch = main
