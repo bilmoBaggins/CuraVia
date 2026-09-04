@@ -134,6 +134,6 @@ Changes made inside a submodule must be committed and pushed from that submodule
 ## Repositories
 
 - Parent: https://github.com/bilmoBaggins/CuraVia
-- Backend: https://github.com/bilmoBaggins/CuraVia
+- CuraVia-backend: https://github.com/curavia/CuraVia-backend
 - Frontend: https://github.com/curavia/Curavia-frontend
 - Website: https://github.com/curavia/CuraVia-website
